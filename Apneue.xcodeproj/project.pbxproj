@@ -7,13 +7,26 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		930BEE1D2DE9BA1700DE621F /* Apnea.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Apnea.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		930BEE1D2DE9BA1700DE621F /* Apneue.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Apneue.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		9347ECB82E0E3413001619F0 /* Exceptions for "Apneue" folder in "Apneue" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 930BEE1C2DE9BA1700DE621F /* Apneue */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		930BEE1F2DE9BA1700DE621F /* Apnea */ = {
+		930BEE1F2DE9BA1700DE621F /* Apneue */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Apnea;
+			exceptions = (
+				9347ECB82E0E3413001619F0 /* Exceptions for "Apneue" folder in "Apneue" target */,
+			);
+			path = Apneue;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -32,7 +45,7 @@
 		930BEE142DE9BA1700DE621F = {
 			isa = PBXGroup;
 			children = (
-				930BEE1F2DE9BA1700DE621F /* Apnea */,
+				930BEE1F2DE9BA1700DE621F /* Apneue */,
 				930BEE1E2DE9BA1700DE621F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -40,7 +53,7 @@
 		930BEE1E2DE9BA1700DE621F /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				930BEE1D2DE9BA1700DE621F /* Apnea.app */,
+				930BEE1D2DE9BA1700DE621F /* Apneue.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,9 +61,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		930BEE1C2DE9BA1700DE621F /* Apnea */ = {
+		930BEE1C2DE9BA1700DE621F /* Apneue */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 930BEE2A2DE9BA1900DE621F /* Build configuration list for PBXNativeTarget "Apnea" */;
+			buildConfigurationList = 930BEE2A2DE9BA1900DE621F /* Build configuration list for PBXNativeTarget "Apneue" */;
 			buildPhases = (
 				930BEE192DE9BA1700DE621F /* Sources */,
 				930BEE1A2DE9BA1700DE621F /* Frameworks */,
@@ -61,13 +74,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				930BEE1F2DE9BA1700DE621F /* Apnea */,
+				930BEE1F2DE9BA1700DE621F /* Apneue */,
 			);
-			name = Apnea;
+			name = Apneue;
 			packageProductDependencies = (
 			);
 			productName = Apnea;
-			productReference = 930BEE1D2DE9BA1700DE621F /* Apnea.app */;
+			productReference = 930BEE1D2DE9BA1700DE621F /* Apneue.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -78,14 +91,14 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1640;
-				LastUpgradeCheck = 1640;
+				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					930BEE1C2DE9BA1700DE621F = {
 						CreatedOnToolsVersion = 16.4;
 					};
 				};
 			};
-			buildConfigurationList = 930BEE182DE9BA1700DE621F /* Build configuration list for PBXProject "Apnea" */;
+			buildConfigurationList = 930BEE182DE9BA1700DE621F /* Build configuration list for PBXProject "Apneue" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -94,12 +107,14 @@
 			);
 			mainGroup = 930BEE142DE9BA1700DE621F;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 930BEE1E2DE9BA1700DE621F /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				930BEE1C2DE9BA1700DE621F /* Apnea */,
+				930BEE1C2DE9BA1700DE621F /* Apneue */,
 			);
 		};
 /* End PBXProject section */
@@ -178,12 +193,13 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -236,11 +252,12 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -249,63 +266,89 @@
 		930BEE2B2DE9BA1900DE621F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = ApneueIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = Apneue/Apneue.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = P8JY26RP56;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Apneue/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "To read mindfulness minutes into the application.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "To save mindfulness minutes from the application.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UIStatusBarStyle = "";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.saadanis.Apnea;
+				PRODUCT_BUNDLE_IDENTIFIER = com.saadanis.Apneue;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
 		930BEE2C2DE9BA1900DE621F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = ApneueIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = Apneue/ApneueRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = P8JY26RP56;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Apneue/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "To read mindfulness minutes into the application.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "To save mindfulness minutes from the application.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UIStatusBarStyle = "";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.saadanis.Apnea;
+				PRODUCT_BUNDLE_IDENTIFIER = com.saadanis.Apneue;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		930BEE182DE9BA1700DE621F /* Build configuration list for PBXProject "Apnea" */ = {
+		930BEE182DE9BA1700DE621F /* Build configuration list for PBXProject "Apneue" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				930BEE282DE9BA1900DE621F /* Debug */,
@@ -314,7 +357,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		930BEE2A2DE9BA1900DE621F /* Build configuration list for PBXNativeTarget "Apnea" */ = {
+		930BEE2A2DE9BA1900DE621F /* Build configuration list for PBXNativeTarget "Apneue" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				930BEE2B2DE9BA1900DE621F /* Debug */,
