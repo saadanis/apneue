@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import CoreMotion
 
 struct WaterView<Primary: View, Secondary: View>: View {
     
@@ -15,6 +14,7 @@ struct WaterView<Primary: View, Secondary: View>: View {
     let colors: [Color]
     let skyGradient: LinearGradient
     let offset: CGFloat
+    let isAnimated: Bool
     
     let primaryContent: Primary
     let secondaryContent: Secondary?
@@ -29,21 +29,11 @@ struct WaterView<Primary: View, Secondary: View>: View {
         let uiColorA = UIColor(colorA)
         let uiColorB = UIColor(colorB)
         
-        print(uiColorA, uiColorB)
-        
         var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, a1: CGFloat = 0
         var r2: CGFloat = 0, g2: CGFloat = 0, b2: CGFloat = 0, a2: CGFloat = 0
         
         uiColorA.getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
         uiColorB.getRed(&r2, green: &g2, blue: &b2, alpha: &a2)
-        
-        print(r1, g1, b1, a1)
-        print(r2, g2, b2, a2)
-        
-//        print((0...steps+1).map { i in
-//            let t = CGFloat(i) / CGFloat(steps + 1)
-//            return Double(r1 + (r2 - r1) * t)
-//        })
         
         return (0...steps+1).map { i in
             let t = CGFloat(i) / CGFloat(steps + 1)
@@ -62,9 +52,12 @@ struct WaterView<Primary: View, Secondary: View>: View {
         offset: CGFloat = K.initialOffset,
         spacing: CGFloat = K.initialSpacing,
         numberOfWaves: Int = 4,
+        isAnimated: Bool = true,
         @ViewBuilder primaryContent: () -> Primary,
         @ViewBuilder secondaryContent: () -> Secondary? = { nil }
     ) {
+        
+        self.isAnimated = isAnimated
         
         self.primaryContent = primaryContent()
         self.secondaryContent = secondaryContent()
@@ -72,10 +65,6 @@ struct WaterView<Primary: View, Secondary: View>: View {
         var numberOfWaves = max(3, min(numberOfWaves, 10))
         
         numberOfWaves = max(numberOfWaves, min(waveColors.count, 10))
-//
-//        if numberOfWaves < waveColors.count {
-//            numberOfWaves = waveColors.count
-//        }
         
         let stepSize = (2 * spacing) / Double(numberOfWaves - 1)
         self.offsets = (0..<numberOfWaves).map {
@@ -94,60 +83,58 @@ struct WaterView<Primary: View, Secondary: View>: View {
             self.colors = waveColors
         }
         
-        self.skyGradient = LinearGradient(gradient: Gradient(colors: skyColors), startPoint: .top, endPoint: .center)
+        self.skyGradient = LinearGradient(
+            gradient: Gradient(colors: skyColors),
+            startPoint: UnitPoint(x: 0.5, y: 0.0),
+            endPoint: UnitPoint(x: 0.5, y: 1.0)
+        )
         
         self.offset = offset
     }
     
     var body: some View {
         TimelineView(.animation) { timeline in
-            let time = timeline.date.timeIntervalSinceReferenceDate
+            let time = isAnimated ? timeline.date.timeIntervalSinceReferenceDate : 0
             let midWave = colors.count / 2
             ZStack {
                 ForEach(colors.enumerated(), id: \.offset) { index, color in
                     let amplitude = CGFloat(10 * Double(index + 1) / Double(colors.count))
                     let frequency = 2 * Double(colors.count - index) / Double(colors.count)
                     let phase = initialPhases[index] + CGFloat(time / phaseSpeeds[index] * .pi * 2)
-                    let bobbing = bobAmounts[index] * CGFloat(sin(time / bobDurations[index] * .pi * 2))
-                    
-//                    if index == colors.count - 1 {
-//                        content
-//                            .offset(y: initialOffset + offsets[index] + bobbing - 10)
-//                    }
+                    let bobbing = isAnimated ? bobAmounts[index] * CGFloat(sin(time / bobDurations[index] * .pi * 2)) : 0
                     
                     if index == midWave {
-                        
                         let tilt1 = sin(phase - 0.5) * 0.02
-                        let tilt2 = sin(phase - 0.25) * 0.03
-                        
-                        VStack {
+                        ZStack {
                             primaryContent
                                 .rotationEffect(.radians(-tilt1))
                                 .offset(y: max(bobbing, offset + offsets[index] + bobbing) + 15)
                             if let secondary = secondaryContent {
                                 secondary
-                                    .rotationEffect(.radians(-tilt2))
                                     .offset(y: max(bobbing*1.1, offset + offsets[index] + bobbing*1.1) + 20)
                             }
                         }
-         
-                        
                     }
                     
-                    let colorInScheme = colorScheme == .light ? color : color.darker(by: 50)
+                    let colorInScheme = colorScheme == .light ? color : color.darker(by: 30)
                     
                     WaveView(amplitude: amplitude, frequency: frequency, phase: phase)
                         .fill(
-                            LinearGradient(
-                                colors: index >= midWave ? [
+                            index == 0 ? LinearGradient(
+                                colors: [colorInScheme],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ) : index < midWave ? LinearGradient(
+                                colors: [colorInScheme],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ) : LinearGradient(
+                                colors: [
                                     colorInScheme.opacity(0.3),
-                                    colorInScheme.darker(by: 20)
-                                ] : [
-                                    colorInScheme.opacity(0.3),
-                                    colorInScheme,
-                                    colorInScheme
+                                    colorInScheme.opacity(0.8)
                                 ],
-                                startPoint: .center, endPoint: .bottom
+                                startPoint: .center,
+                                endPoint: UnitPoint(x: 0.5, y: 0.8)
                             )
                         )
                         .stroke(
@@ -157,13 +144,20 @@ struct WaterView<Primary: View, Secondary: View>: View {
                             lineWidth: 1
                         )
                         .offset(y: offset + offsets[index] + bobbing)
-                        .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height * 2)
+                        .frame(height: UIScreen.main.bounds.height * 1.75)
                 }
             }
-            .ignoresSafeArea()
-            .background(skyGradient.opacity(0.2))
+            .background {
+                skyGradient
+//                    .overlay(
+//                        colorScheme == .dark
+//                        ? Color.black.opacity(0.8)
+//                        : Color.white.opacity(0.5)
+//                    )
+            }
         }
-        .drawingGroup(opaque: false, colorMode: .extendedLinear)
+        .drawingGroup(opaque: true, colorMode: .extendedLinear)
+        .ignoresSafeArea(edges: .all)
     }
 }
 
@@ -199,16 +193,50 @@ struct WaveView: Shape {
 }
 
 #Preview {
-    WaterView() {
-        Text("primary")
-            .font(.system(size: 100))
-            .fontWeight(.bold)
-            .foregroundStyle(.white)
+    
+    @Environment(\.colorScheme) var colorScheme
+    
+    WaterView(
+        waveColors: K.colorThemes[0].waveColors,
+        skyColors: K.colorThemes[0].backgroundColors
+    ) {
+        Text("00:00")
+            .font(.system(size: 120, weight: .semibold, design: .default))
+            .fontDesign(.default)
+            .fontWeight(.semibold)
+            .fontWidth(.compressed)
+            .foregroundStyle(
+                .white.opacity(0.8)
+                .shadow(
+                    .inner(
+                        color: .white.opacity(1),
+                        radius: 2, x: 0, y: 1
+                    )
+                )
+            )
+            .foregroundStyle(.thickMaterial)
         
     } secondaryContent: {
-        Text("secondary")
-            .font(.headline)
-            .fontWeight(.semibold)
-            .foregroundStyle(.white)
+        VStack(spacing: 100) {
+            Text("ROUND 1 OF 10")
+                .fontWeight(.bold)
+                .frame(height: 50)
+                .foregroundStyle(
+                    colorScheme == .dark ?
+                    Color.white :
+                        Color.white
+                )
+                .blendMode(
+                    colorScheme == .dark ?
+                        .lighten :
+                            .lighten
+                )
+            
+            Text("INHALE")
+                .fontWeight(.bold)
+                .foregroundStyle(.white)
+                .textCase(.uppercase)
+                .frame(height: 60)
+        }
     }
 }

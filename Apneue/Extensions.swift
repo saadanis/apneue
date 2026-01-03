@@ -10,8 +10,15 @@ import SwiftUI
 
 extension TimeInterval {
     var formattedTime: String {
-        let minutes = Int(self) / 60
-        let seconds = Int(self) % 60
+        let totalSeconds = Int(self)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        
+        if hours > 0 {
+            return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+        }
+        
         return String(format: "%02d:%02d", minutes, seconds)
     }
 }
@@ -32,7 +39,7 @@ extension Color {
         default:
             (a, r, g, b) = (1, 1, 1, 0)
         }
-
+        
         self.init(
             .sRGB,
             red: Double(r) / 255,
@@ -48,32 +55,26 @@ extension Color {
         var saturation: CGFloat = 0
         var brightness: CGFloat = 0
         var alpha: CGFloat = 0
-
+        
         uiColor.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
         
         return Color(hue: Double(hue), saturation: Double(saturation), brightness: Double(max(brightness - percentage/100, 0.0)), opacity: Double(alpha))
     }
-}
-
-struct BoxedLabelStyle: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-//        HStack {
-//            configuration.icon
-//                .foregroundColor(.blue)
-//                .font(.title2)
-//            configuration.title
-//                .font(.headline)
-//                .foregroundColor(.primary)
-//        }
-        Label {
-            configuration.title
-        } icon: {
-            configuration.icon
-                .font(.system(.subheadline, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 32, height: 32)
-                .background(Color.accentColor)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
+    
+    func flattened(over background: Color, alpha: CGFloat) -> Color {
+        let fg = UIColor(self)
+        let bg = UIColor(background)
+        
+        var fr: CGFloat = 0, fgC: CGFloat = 0, fb: CGFloat = 0, _ : CGFloat = 0
+        var br: CGFloat = 0, bgC: CGFloat = 0, bb: CGFloat = 0, _ : CGFloat = 0
+        
+        fg.getRed(&fr, green: &fgC, blue: &fb, alpha: nil)
+        bg.getRed(&br, green: &bgC, blue: &bb, alpha: nil)
+        
+        let r = fr * alpha + br * (1 - alpha)
+        let g = fgC * alpha + bgC * (1 - alpha)
+        let b = fb * alpha + bb * (1 - alpha)
+        
+        return Color(red: Double(r), green: Double(g), blue: Double(b))
     }
 }

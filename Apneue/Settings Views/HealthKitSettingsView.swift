@@ -21,8 +21,10 @@ struct HealthKitSettingsView: View {
     
     @State var authorizationStatus: HKAuthorizationStatus = .notDetermined
     
+    @State var themeIndex: Int
+    
     var body: some View {
-            List {
+        ThemedList(themeIndex: themeIndex) {
                 HStack {
                     Text("Authorization Status")
                     Spacer()
@@ -112,14 +114,12 @@ struct HealthKitSettingsView: View {
                     authorizationStatus = healthKitManager.getAuthorizationStatus()
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(Color.accentColor.opacity(0.08))
             .navigationTitle("Apple Health")
     }
 }
 
 #Preview {
     NavigationStack {
-        HealthKitSettingsView()
+        HealthKitSettingsView(themeIndex: 0)
     }
 }

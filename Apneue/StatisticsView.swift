@@ -15,6 +15,8 @@ struct StatisticsView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     
+    @AppStorage("colorThemeIndex") private var themeIndex: Int = 0
+    
     @Query(sort: \Entry.timestamp, order: .reverse) var entries: [Entry]
     
     @Query(
@@ -40,37 +42,18 @@ struct StatisticsView: View {
         sort: \Entry.timestamp,
         order: .reverse
     ) var o2Entries: [Entry]
-    
-    @AppStorage("maxHoldDuration") var maxHoldDuration: Double = 30
-    @AppStorage("maxHoldDate") var maxHoldDate: Date = Date()
-    
-    @AppStorage("colorThemeIndex") var colorThemeIndex: Int = 0
-    
-    var chartBackgroundGradientArray: [Color] {
-        Array(K.colorThemes[colorThemeIndex].backgroundColors.prefix(2))
-    }
-    
+
     var streak: (Int, Int) { calculateStreak() }
-    
+
     var totalTime: TimeInterval {
         entries.map { entry in
             entry.duration
         }.reduce(0, +)
     }
     
-    let data = (1...4).map { "Item \($0)" }
-    
-    let columns = [
-        GridItem(.flexible()),
-        GridItem(.flexible())
-    ]
-    
-    @State var isPresented = false
-    
     var body: some View {
-        
         NavigationStack {
-            List {
+            ThemedList(themeIndex: themeIndex) {
                 Section("Summary") {
                     VStack {
                         HStack {
@@ -78,13 +61,15 @@ struct StatisticsView: View {
                                 title: "Current Streak",
                                 image: "flame",
                                 value: String(streak.0),
-                                subvalue: streak.0 == 1 ? "day" : "days"
+                                subvalue: streak.0 == 1 ? "day" : "days",
+                                themeIndex: themeIndex
                             )
                             ListCardView(
                                 title: "Longest Streak",
                                 image: "trophy",
                                 value: String(streak.1),
-                                subvalue: streak.1 == 1 ? "day" : "days"
+                                subvalue: streak.1 == 1 ? "day" : "days",
+                                themeIndex: themeIndex
                             )
                         }
                         HStack {
@@ -92,12 +77,14 @@ struct StatisticsView: View {
                                 title: "Total Sessions",
                                 image: "square.stack.3d.up",
                                 value: String(entries.count),
-                                subvalue: entries.count == 1 ? "session" : "sessions"
+                                subvalue: entries.count == 1 ? "session" : "sessions",
+                                themeIndex: themeIndex
                             )
                             ListCardView(
                                 title: "Total Time Trained",
                                 image: "clock",
-                                value: totalTime.formattedTime
+                                value: totalTime.formattedTime,
+                                themeIndex: themeIndex
                             )
                         }
                     }
@@ -118,15 +105,17 @@ struct StatisticsView: View {
                             if modeEntries.isEmpty {
                                 LatestEntryWithChartView(
                                     entries: modeEntries,
-                                    mode: mode
+                                    mode: mode,
+                                    themeIndex: themeIndex
                                 )
                             } else {
                                 NavigationLink {
-                                    StatisticsDetailsView(mode: mode)
+                                    StatisticsDetailsView(mode: mode, themeIndex: themeIndex)
                                 } label: {
                                     LatestEntryWithChartView(
                                         entries: modeEntries,
-                                        mode: mode
+                                        mode: mode,
+                                        themeIndex: themeIndex
                                     )
                                 }
                                 .navigationLinkIndicatorVisibility(.hidden)
@@ -137,23 +126,12 @@ struct StatisticsView: View {
             }
             .listRowSpacing(10)
             .navigationTitle("Statistics")
-            .scrollContentBackground(.hidden)
-            .background(Color.accentColor.opacity(0.08))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done", systemImage: "checkmark", role: .close) {
                         dismiss()
                     }
                 }
-            }
-            .fontDesign(.rounded)
-        }
-    }
-    
-    private func deleteEntry(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(entries[index])
             }
         }
     }
@@ -168,19 +146,15 @@ struct StatisticsView: View {
         
         let sortedDays = uniqueDays.sorted(by: >)
         let longestStreak = calculateLongestStreak(dates: sortedDays.reversed())
-        
-        print("longestStreak", longestStreak)
-        
+
         let yesterday = calendar.startOfDay(for: Date.now.addingTimeInterval(-86400))
-        print("yesterday", yesterday.formatted(date: .abbreviated, time: .omitted))
-        
+
         let today = calendar.startOfDay(for: Date())
         
         var streak = sortedDays.contains(today) ? 1 : 0
         
         for i in 0..<sortedDays.count {
             let expectedDay = calendar.date(byAdding: .day, value: -i, to: yesterday)!
-            print("expected", expectedDay.formatted(date: .abbreviated, time: .omitted))
             if sortedDays.contains(expectedDay) {
                 streak += 1
             } else {
@@ -212,6 +186,25 @@ struct StatisticsView: View {
     }
 }
 
+struct Donut: Shape {
+    var holeRatio: CGFloat = 0.5
+
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let outer = min(rect.width, rect.height) / 2
+        let inner = outer * holeRatio
+        p.addEllipse(in: CGRect(x: rect.midX - outer,
+                                y: rect.midY - outer,
+                                width: outer * 2,
+                                height: outer * 2))
+        p.addEllipse(in: CGRect(x: rect.midX - inner,
+                                y: rect.midY - inner,
+                                width: inner * 2,
+                                height: inner * 2))
+        return p
+    }
+}
+
 struct LatestEntryWithChartView: View {
     
     @Environment(\.colorScheme) var colorScheme
@@ -220,6 +213,8 @@ struct LatestEntryWithChartView: View {
     
     var mode: TimerMode
     
+    var themeIndex: Int
+    
     var lastSevenEntries: [Entry] {
         if entries.count <= 7 {
             entries.reversed()
@@ -227,19 +222,6 @@ struct LatestEntryWithChartView: View {
             Array(entries[0..<7]).reversed()
         }
     }
-    
-//    var lastSevenDays: [Date: Entry?] {
-//        let calendar = Calendar.current
-//        let today = calendar.startOfDay(for: Date())
-//        let lastSevenDates = (0..<7).map { calendar.date(byAdding: .day, value: -$0, to: today)! }.reversed()
-//        
-//        var dict: [Date: Entry?] = [:]
-//        for date in lastSevenDates {
-//            let entryForDate = entries.first { calendar.isDate($0.timestamp, inSameDayAs: date) }
-//            dict[date] = entryForDate
-//        }
-//        return dict
-//    }
     
     var lastSevenDays: [Date: Entry?] {
         guard let latestEntry = entries.max(by: { $0.timestamp < $1.timestamp }) else { return [:] }
@@ -260,51 +242,6 @@ struct LatestEntryWithChartView: View {
         return entries[0]
     }
     
-//    func shortenedSegment(from p1: (Double, Double), to p2: (Double, Double), shortenBy points: Double = 0.05) -> ((Double, Double), (Double, Double)) {
-//        let dx = p2.0 - p1.0
-//        let dy = p2.1 - p1.1
-//        
-//        let length = sqrt(dx*dx + dy*dy)
-//        
-//        print("length", length)
-//        
-////        guard length > points else {
-////            // Cannot shorten more than the segment's length
-////            return (p1, p2)
-////        }
-//        
-//        let ux = dx / length
-//        let uy = dy / length
-//        
-//        let newP1 = (p1.0 + ux * points/2, p1.1 + uy * points/2)
-//        let newP2 = (p2.0 - ux * points/2, p2.1 - uy * points/2)
-//        
-//        let dxn = newP2.0 - newP1.0
-//        let dyn = newP2.1 - newP1.1
-//        
-//        print("new length", sqrt(dxn*dxn + dyn*dyn))
-//        
-//        return (newP1, newP2)
-//    }
-    
-    func shortenedSegment(from p1: (Double, Double), to p2: (Double, Double), baseFraction: Double = 0.5, scaling: Double = 100.0) -> ((Double, Double), (Double, Double)) {
-        let dx = p2.0 - p1.0
-        let dy = p2.1 - p1.1
-
-        let length = sqrt(dx*dx + dy*dy)
-        
-        let fraction = baseFraction / (1.0 + length / scaling)
-        
-        let shortenX = dx * fraction
-        let shortenY = dy * fraction
-
-        let newP1 = (p1.0 + shortenX, p1.1 + shortenY)
-        let newP2 = (p2.0 - shortenX, p2.1 - shortenY)
-        return (newP1, newP2)
-    }
-    
-    @State var isPressed = false
-    
     var body: some View {
         
         let maxChartWidth: CGFloat = 80
@@ -312,7 +249,7 @@ struct LatestEntryWithChartView: View {
         let widthRatio: CGFloat = CGFloat(entryCount) / 7
         let chartWidth: CGFloat = maxChartWidth * min(widthRatio, 1)
         let secondaryColor: Color = colorScheme == .light ?
-            .gray.darker(by: -30) :
+            .gray.darker(by: -20) :
             .gray.darker(by: 20)
         
         let calendar = Calendar.current
@@ -324,7 +261,7 @@ struct LatestEntryWithChartView: View {
                         Text(mode.rawValue)
                     }
                     .fontWeight(.semibold)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(K.colorThemes[themeIndex].accentColor)
                     Spacer()
                     if let latestEntry = latestEntry {
                         Group {
@@ -356,31 +293,15 @@ struct LatestEntryWithChartView: View {
                     Spacer()
                     if mode == .maxHold {
                         Chart(Array(lastSevenEntries.enumerated()), id: \.element.timestamp) { index, entry in
-                            let latest = calendar.isDate(
-                                entry.timestamp,
-                                inSameDayAs: latestEntry!.timestamp)
-                            
-                            if (index < lastSevenEntries.count - 1) {
-                                
-                                let segment = shortenedSegment(
-                                    from: (Double(index), lastSevenEntries[index].duration),
-                                    to: (Double(index+1), lastSevenEntries[index+1].duration),
-                                    baseFraction: 0.2, scaling: 30)
-                            
-                                LineMark(
-                                    x: .value("X", segment.0.0),
-                                    y: .value("Y", segment.0.1)
-                                )
-                                .foregroundStyle(secondaryColor)
-                                .foregroundStyle(by: .value("group", segment.0.0))
-                                .lineStyle(StrokeStyle(lineWidth: 2))
-                                LineMark(
-                                    x: .value("X", segment.1.0),
-                                    y: .value("Y", segment.1.1)
-                                )
-                                .foregroundStyle(by: .value("group", segment.0.0))
-                                .lineStyle(StrokeStyle(lineWidth: 2))
-                            }
+                            let latest = entry.timestamp == latestEntry!.timestamp
+
+                            LineMark(
+                                x: .value("Date", index),
+                                y: .value("Duration", entry.duration)
+                            )
+                            .foregroundStyle(secondaryColor)
+                            .lineStyle(StrokeStyle(lineWidth: 2))
+
                             
                             PointMark(
                                 x: .value("Date", index),
@@ -388,13 +309,18 @@ struct LatestEntryWithChartView: View {
                             )
                             .symbol {
                                 Circle()
-                                    .stroke(
+                                    .fill(
                                         latest ?
-                                        Color.accentColor :
-                                            secondaryColor,
-                                        lineWidth: 2
+                                        K.colorThemes[themeIndex].accentColor:
+                                            secondaryColor
                                     )
-                                    .frame(width: 6)
+//                                    .stroke(
+//                                        latest ?
+//                                        Color.accentColor :
+//                                            secondaryColor,
+//                                        lineWidth: 2
+//                                    )
+                                    .frame(width: 7)
                             }
                         }
                         .chartYAxis(.hidden)
@@ -416,7 +342,7 @@ struct LatestEntryWithChartView: View {
                                         date,
                                         inSameDayAs: latestEntry!.timestamp
                                     ) ?
-                                    Color.accentColor :
+                                    K.colorThemes[themeIndex].accentColor :
                                             secondaryColor
                                 )
                             } else {
@@ -448,6 +374,8 @@ struct ListCardView: View {
     var value: String
     var subvalue: String?
     
+    var themeIndex: Int
+    
     var body: some View {
         VStack(alignment: .leading) {
             HStack {
@@ -462,7 +390,7 @@ struct ListCardView: View {
                 Text(value)
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(K.colorThemes[themeIndex].accentColor)
                 if let subvalue = subvalue {
                     Text(subvalue)
                         .fontWeight(.semibold)
@@ -519,7 +447,18 @@ struct ListCardView: View {
     moreEntries.forEach(container.mainContext.insert)
     moreMoreEntries.forEach(container.mainContext.insert)
     
-    return StatisticsView()
-        .tint(K.colorThemes[0].accentColor)
-        .modelContainer(container)
+    struct Preview: View {
+        
+    @State var themeIndex = 0
+        
+        var container: ModelContainer
+        
+        var body: some View {
+            StatisticsView()
+                .tint(K.colorThemes[0].accentColor)
+                .modelContainer(container)
+        }
+    }
+    
+    return Preview(container: container)
 }

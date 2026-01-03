@@ -8,7 +8,6 @@
 import SwiftUI
 import SwiftData
 import CoreHaptics
-import AVFoundation
 
 struct TimerConfiguration {
     var numberOfRounds: Int
@@ -19,29 +18,41 @@ struct TimerConfiguration {
 
 func getSymbolForMode(_ mode: TimerMode) -> String {
     switch mode {
-        case .maxHold:
-            "timer"
-        case .boxBreathing:
-            "cube"
-        case .co2Table:
-            "water.waves.and.arrow.trianglehead.down"
-        case .o2Table:
-            "water.waves.and.arrow.trianglehead.up"
+    case .maxHold:
+        "timer"
+    case .boxBreathing:
+        "cube"
+    case .co2Table:
+        "water.waves.and.arrow.trianglehead.down"
+    case .o2Table:
+        "water.waves.and.arrow.trianglehead.up"
     }
 }
 
 struct TimerView: View {
     
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) var colorScheme
+    
+    private static var maxHoldDescriptor: FetchDescriptor<Entry> = {
+        var descriptor = FetchDescriptor<Entry>(
+            predicate: #Predicate { $0.mode == "Max Hold" },
+            sortBy: [SortDescriptor(\.duration, order: .reverse)]
+        )
+        descriptor.fetchLimit = 1
+        return descriptor
+    }()
+    
+    @Query(Self.maxHoldDescriptor) var maxHoldEntry: [Entry]
+    
+    var maxHoldDuration: TimeInterval {
+        maxHoldEntry.first?.duration ?? 0
+    }
     
     @Namespace private var namespace
     
     @StateObject var healthKitManager = HealthKitManager.shared
-    
-    @State private var audioPlayer: AVAudioPlayer?
-    
-    @State private var engine: CHHapticEngine?
     
     @AppStorage("syncToHealthKit") var syncToHealthKit: Bool = false
     @AppStorage("syncHoldToHK") var syncHoldToHK: Bool = false
@@ -49,8 +60,6 @@ struct TimerView: View {
     @AppStorage("syncTablesToHK") var syncTablesToHK: Bool = false
     
     // Setup options.
-    @AppStorage("maxHoldDuration") var maxHoldDuration: Double = 0
-    @AppStorage("maxHoldDate") var maxHoldDate: Date = Date()
     
     @AppStorage("boxBreathingDuration") var boxBreathingDuration: Double = 4
     @AppStorage("boxBreathingNumberOfRounds") var boxBreathingNumberOfRounds: Int = 8
@@ -65,14 +74,19 @@ struct TimerView: View {
     @AppStorage("o2HoldStartingPercentage") var o2HoldStartingPercentage: Double = 0.5
     @AppStorage("o2HoldEndingPercentage") var o2HoldEndingPercentage: Double = 1.0
     
-    @AppStorage("skipInitialRest") var skipInitialRest: Bool = true
-
+    @AppStorage("onboardingComplete") private var onboardingComplete: Bool = false
+    
+    
     // Color palette options.
     @Binding var colorThemeIndex: Int
     
     var accentColor: Color {
         K.colorThemes[colorThemeIndex].accentColor
     }
+    
+    @State private var skipInitialRest: Bool = (UserDefaults.standard.object(forKey: "skipInitialRest") as? Bool) ?? true
+    
+    @State private var hapticsEnabled: Bool = (UserDefaults.standard.object(forKey: "hapticsEnabled") as? Bool) ?? true
     
     @State private var timerMode: TimerMode = TimerMode(
         rawValue: UserDefaults.standard.string(
@@ -83,8 +97,6 @@ struct TimerView: View {
             forKey: "lastUsedMode"
         ) ?? ""
     ) ?? .boxBreathing
-    
-    @State var isUnderwater: Bool = false
     
     private var timerConfiguration: TimerConfiguration? {
         if timerMode == .boxBreathing {
@@ -119,18 +131,6 @@ struct TimerView: View {
     @State private var phaseStartTime: Date?
     @State private var phaseEndTime: Date?
     @State private var phaseTimeRemaining: TimeInterval = 0
-    private var phaseTotalTime: TimeInterval {
-        if let timerConfiguration = timerConfiguration {
-            return timerConfiguration.durations[currentWithinRound - 1]
-        }
-        return 0
-    }
-    private var phaseProgress: Double {
-        if let phaseEndTime = phaseEndTime, let phaseStartTime = phaseStartTime {
-            return Date().timeIntervalSince(phaseStartTime)/phaseEndTime.timeIntervalSince(phaseStartTime)
-        }
-        return 0
-    }
     
     // Round info for phased sessions.
     @State private var currentWithinRound: Int = 1
@@ -146,10 +146,11 @@ struct TimerView: View {
         }
         return -1
     }
-
+    
     @State private var isShowingStatisticsSheet: Bool = false
     @State private var isShowingSettingsSheet: Bool = false
     @State private var isShowingConfigurationSheet: Bool = false
+    @State private var isShowingOnboardingSheet: Bool = false
     
     @State private var waveOffset: CGFloat = K.initialOffset
     @State private var waveSpacing: CGFloat = K.initialSpacing
@@ -175,377 +176,341 @@ struct TimerView: View {
         }
     }
     
-    func playSound(resource: String, type: String) {
-        guard let url = Bundle.main.url(forResource: resource, withExtension: type) else {
-            print("Audio file not found.")
-            return
-        }
-        
-        do {
-            try AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
-            try AVAudioSession.sharedInstance().setActive(true)
-    
-            audioPlayer = try AVAudioPlayer(contentsOf: url)
-            audioPlayer?.numberOfLoops = -1
-            audioPlayer?.play()
-        } catch {
-            print("Error playing sound: \(error.localizedDescription)")
-        }
-    }
-    
-    func stopSound() {
-        audioPlayer?.stop()
-    }
-    
     var countUp: Bool { timerMode == .maxHold }
     
-    let defaultRadius: CGFloat = 1000
-    let smallRadius: CGFloat = 400
-    let largeRadius: CGFloat = 1200
+    @State var showDiscardConfirmationDialog: Bool = false
     
     var body: some View {
-        NavigationStack {
-                    WaterView (
-                        waveColors: K.colorThemes[colorThemeIndex].waveColors,
-                        skyColors: K.colorThemes[colorThemeIndex].backgroundColors,
-                        offset: waveOffset,
-                        spacing: waveSpacing,
-                        numberOfWaves: 4
-                    ) {
-                        VStack {
-//                            if timerMode != .maxHold {
-                            if false {
-                                Text("ROUND \(currentRound) OF \(numberOfRounds)")
-                                    .font(.system(.headline, design: .rounded, weight: .bold))
-                                    .foregroundStyle(accentColor)
-//                                    .animation(.bouncy(duration: 0.8, extraBounce: 0.1), value: currentRound)
-                            }
-//                            Text("ROUND OF \(numberOfRounds)")
-//                                .font(.system(.headline, design: .rounded, weight: .bold))
-//                                .foregroundStyle(.white)
-//                                .shadow(radius: 20)
-                                AnimatedTime(time: currentTime, countUp: countUp)
-                                    .font(thefont(size: 120))
-                                    .foregroundStyle(
-                                        .white.opacity(0.8)
-                                        .shadow(
-                                            .inner(
-                                                color: .white.opacity(1),
-                                                radius: 2, x: 0, y: 1
-                                            )
-                                        )
-                                    )
-                        }
-
-                    } secondaryContent: {
-                        HStack {
-                            Text(currentBreathStatus.rawValue)
-                                .font(.system(.headline, design: .rounded, weight: .bold))
-                                .foregroundStyle(.white)
-                                .blendMode(.screen)
-                                .textCase(.uppercase)
-                                .transition(.push(from: .trailing).combined(with: .blurReplace))
-                                .id(currentBreathStatus)
-                        }
-                                .animation(.bouncy(duration: 0.8, extraBounce: 0.1), value: currentBreathStatus)
-                    }
-//                }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                        Button("Statistics", systemImage: "chart.xyaxis.line") {
+        VStack {
+            GlassEffectContainer {
+                HStack(alignment: .center) {
+                    if !isTimerRunning {
+                        Button {
                             isShowingStatisticsSheet = true
+                        } label: {
+                            Image(systemName: "chart.xyaxis.line")
+                                .font(.title3)
+                            //                            .foregroundStyle(.white)
+                                .frame(width: 20, height: 30)
+                                .matchedTransitionSource(id: "statisticsSheet", in: namespace)
                         }
-                        .disabled(isTimerRunning)
+                        .buttonBorderShape(.circle)
+                        .buttonStyle(.glass(.clear))
+                        .glassEffectTransition(.matchedGeometry)
                     }
-                    .matchedTransitionSource(id: "statisticsSheet", in: namespace)
-                
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Settings", systemImage: "gearshape") {
-                        isShowingSettingsSheet = true
-                    }
-                    .disabled(isTimerRunning)
-                }
-                .matchedTransitionSource(id: "settingsSheet", in: namespace)
-                
-                
-                
-//                if currentStatus == .started {
-//                    ToolbarItem(placement: .bottomBar) {
-//                        VStack(alignment: .leading) {
-//                            if timerMode != .maxHold {
-//                                Text("ROUND")
-//                                    .font(.system(.caption, design: .rounded, weight: .regular))
-//                                    .foregroundStyle(.white)
-//                                Text("\(currentRound) / \(numberOfRounds)")
-//                                    .font(.system(.title2, design: .rounded, weight: .heavy))
-//                                    .foregroundStyle(accentColor.darker(by: -20))
-//                                    .animation(.bouncy(duration: 0.8, extraBounce: 0.1), value: currentRound)
-//                            }
-//                        }
-//                        .frame(maxWidth: .infinity, alignment: .leading)
-//                        .animation(.bouncy(duration: 0.8, extraBounce: 0.1), value: currentBreathStatus)
-//                    }
-//                    .sharedBackgroundVisibility(.hidden)
-//                }
-                
-//                ToolbarSpacer(.flexible, placement: .bottomBar)
-                if isTimerRunning {
-                    ToolbarItem(placement: .bottomBar) {
-                        Button("Reset", systemImage: "xmark", role: .destructive) {
-                            stop()
-                            reset()
-                        }
-                        .tint(.red)
-                    }
-                } else {
-                    ToolbarItem(placement: .bottomBar) {
-                        Menu(timerMode.rawValue, systemImage: getSymbolForMode(timerMode)) {
-                            ForEach(TimerMode.allCases , id:\.self) { mode in
-                                Button {
-                                    timerMode = mode
-                                    UserDefaults.standard.set(mode.rawValue, forKey: "lastUsedMode")
-                                } label: {
-                                    Label(mode.rawValue, systemImage: getSymbolForMode(mode))
-                                    if [.co2Table, .o2Table].contains(mode) && maxHoldDuration < 1 {
-                                        Text("Test your max hold first to unlock this mode.")
-                                    }
-                                }
-                                .disabled([.co2Table, .o2Table].contains(mode) && maxHoldDuration < 1)
-                                if mode == .boxBreathing {
-                                    Divider()
-                                }
+                    Spacer()
+                    VStack {
+                        Text(timerMode.rawValue)
+                            .font(.headline)
+                        
+                        var subtitle: String {
+                            switch timerMode {
+                            case .maxHold:
+                                return "Personal Best \(maxHoldDuration.formattedTime)"
+                            case .boxBreathing:
+                                let duration = Int(boxBreathingDuration)
+                                return "\(duration)→\(duration)→\(duration)→\(duration) (×\(boxBreathingNumberOfRounds))"
+                            case .co2Table:
+                                let initialRest = co2RestStartingDuration.formattedTime
+                                let lastRest = co2RestEndingDuration.formattedTime
+                                let hold = (co2HoldPercentage * maxHoldDuration).formattedTime
+                                return "\(initialRest)→\(lastRest) & \(hold)"
+                            case .o2Table:
+                                let rest = o2RestDuration.formattedTime
+                                let initialHold = (Double(maxHoldDuration)*o2HoldStartingPercentage).formattedTime
+                                let finalHold = (Double(maxHoldDuration)*o2HoldEndingPercentage).formattedTime
+                                return "\(rest) & \(initialHold)→\(finalHold)"
                             }
                         }
+                        
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(height: 45)
+                    Spacer()
+                    if !isTimerRunning {
+                        Button {
+                            isShowingSettingsSheet = true
+                        } label: {
+                            Image(systemName: "gearshape")
+                                .font(.title3)
+                                .frame(width: 20, height: 30)
+                                .matchedTransitionSource(id: "settingsSheet", in: namespace)
+                        }
+                        .buttonBorderShape(.circle)
+                        .buttonStyle(.glass(.clear))
+                        .glassEffectTransition(.matchedGeometry)
                     }
                 }
-                ToolbarSpacer(.flexible, placement: .bottomBar)
-                ToolbarItem(placement: .bottomBar) {
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.3), value: isTimerRunning)
+            }
+            Spacer()
+            HStack {
+                if isTimerRunning {
                     Button {
-                        if isTimerRunning {
-                            stop()
-                            save()
-                        } else {
-                            start()
+                        stop()
+                        reset()
+                    } label: {
+                        Image(systemName: "trash")
+                            .contentTransition(.symbolEffect(.replace.magic(fallback: .downUp.byLayer), options: .nonRepeating))
+                            .font(.title3)
+                            .foregroundStyle(.white)
+                            .frame(width: 20, height: 30)
+                    }
+                    .buttonBorderShape(.circle)
+                    .buttonStyle(.glass(.clear))
+                } else {
+                    Menu {
+                        ForEach(TimerMode.allCases , id:\.self) { mode in
+                            Button {
+                                timerMode = mode
+                                UserDefaults.standard.set(mode.rawValue, forKey: "lastUsedMode")
+                            } label: {
+                                Label(mode.rawValue, systemImage: getSymbolForMode(mode))
+                                if [.co2Table, .o2Table].contains(mode) && maxHoldDuration < 1 {
+                                    Text("Test your max hold first to unlock this mode.")
+                                }
+                            }
+                            .disabled([.co2Table, .o2Table].contains(mode) && maxHoldDuration < 1)
+                            if mode == .boxBreathing {
+                                Divider()
+                            }
                         }
                     } label: {
-                        HStack {
-                            if isTimerRunning {
-                                Image(systemName: "stop.fill")
-                                Text("STOP")
-                            } else {
-                                Image(systemName: "play.fill")
-                                Text("START")
-                            }
-                        }
+                        Image(systemName: getSymbolForMode(timerMode))
+                            .contentTransition(.symbolEffect(.replace.magic(fallback: .downUp.byLayer), options: .nonRepeating))
+                            .font(.title3)
+                            .foregroundStyle(.white)
+                            .frame(width: 20, height: 20)
+                    }
+                    .padding(12)
+                    .glassEffect(.clear.interactive(), in: .circle)
+                }
+                Spacer()
+                Button {
+                    if isTimerRunning {
+                        stop()
+                        save()
+                        reset()
+                    } else {
+                        start()
+                    }
+                } label: {
+                    Image(systemName: isTimerRunning ? "stop.fill" : "play.fill")
+                        .contentTransition(.symbolEffect(.replace.magic(fallback: .downUp.byLayer), options: .nonRepeating))
                         .fontWeight(.bold)
-                        .font(.subheadline)
-                        .fontDesign(.rounded)
-                        .padding(.horizontal)
-                    }
-                    .tint(accentColor)
-                    .buttonStyle(.glassProminent)
-                    .sensoryFeedback(trigger: isTimerRunning) { _, newValue in
-                        if newValue {
-                            return .start
-                        } else {
-                            return .stop
-                        }
-                    }
+                        .font(.largeTitle)
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 50)
                 }
-                ToolbarSpacer(.flexible, placement: .bottomBar)
-                if isTimerRunning {
-                    ToolbarItem(placement: .bottomBar) {
-                        Button("Audio", systemImage: "speaker.wave.2") {
-                            
-                        }
+                .buttonBorderShape(.circle)
+                .buttonStyle(.glass(.clear))
+                Spacer()
+                Button {
+                    if isTimerRunning {
+                        hapticsEnabled.toggle()
+                    } else {
+                        isShowingConfigurationSheet = true
                     }
-                }
-                if !isTimerRunning && timerMode != .maxHold {
-                    ToolbarItem(placement: .bottomBar) {
-                        Button {
-                            isShowingConfigurationSheet = true
-                        } label: {
-                            Image(systemName: "slider.horizontal.3")
-                        }
-                    }
+                } label: {
+                    Image(
+                        systemName: isTimerRunning ?
+                        (hapticsEnabled ? "waveform" : "waveform.slash") :
+                            (timerMode == .maxHold ? "exclamationmark.shield" : "slider.horizontal.3")
+                    )
+                    .contentTransition(.symbolEffect(.replace.magic(fallback: .downUp.byLayer), options: .nonRepeating))
+                    .font(.title3)
+                    .foregroundStyle(.white)
+                    .frame(width: 20, height: 30)
                     .matchedTransitionSource(id: "configurationSheet", in: namespace)
                 }
+                .buttonBorderShape(.circle)
+                .buttonStyle(.glass(.clear))
             }
-            .sheet(isPresented: $isShowingConfigurationSheet) {
-                Group {
-                    switch timerMode {
-                    case .maxHold:
-                        EmptyView()
-                    case .boxBreathing:
-                        BoxBreathingConfigurationView()
-                            .presentationDetents([.fraction(0.7), .large])
-                    case .co2Table:
-                        CO2TableConfigurationView()
-                    case .o2Table:
-                        O2TableConfigurationView()
-                    }
+        }
+        .padding(.horizontal)
+        .background {
+            WaterView (
+                waveColors: K.colorThemes[colorThemeIndex].waveColors,
+                skyColors: K.colorThemes[colorThemeIndex].backgroundColors,
+                offset: waveOffset,
+                spacing: waveSpacing,
+                numberOfWaves: 4
+            ) {
+                VStack {
+                    AnimatedTime(time: currentTime, countUp: countUp)
+                        .font(.system(size: 120, weight: .semibold, design: .default))
+                        .fontDesign(.default)
+                        .fontWeight(.semibold)
+                        .fontWidth(.compressed)
+                        .foregroundStyle(
+                            .white.opacity(0.8)
+                            .shadow(
+                                .inner(
+                                    color: .white.opacity(1),
+                                    radius: 2, x: 0, y: 1
+                                )
+                            )
+                        )
+                        .foregroundStyle(.thickMaterial)
                 }
-                .navigationTransition(.zoom(sourceID: "configurationSheet", in: namespace))
+                
+            } secondaryContent: {
+                VStack(spacing: 100) {
+                    HStack {
+                        Text(timerMode == .maxHold ? " " : "ROUND \(currentRound) OF \(numberOfRounds)")
+                            .fontWeight(.bold)
+                            .foregroundStyle(
+                                colorScheme == .dark ?
+                                Color.white :
+                                    Color.white
+                            )
+                            .blendMode(
+                                colorScheme == .dark ?
+                                    .lighten :
+                                        .lighten
+                            )
+//                            .foregroundStyle(
+//                                colorScheme == .dark ? Color.black : Color.black
+//                            )
+                    }
+                    .frame(height: 50)
+                    HStack {
+                        Text(currentBreathStatus.rawValue)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.white)
+                            .textCase(.uppercase)
+                            .transition(.push(from: .trailing).combined(with: .blurReplace))
+                            .id(currentBreathStatus)
+                    }
+                    .frame(height: 60)
+                    .animation(.bouncy(duration: 0.8, extraBounce: 0.1), value: currentBreathStatus)
+                }
             }
-            .sheet(isPresented: $isShowingStatisticsSheet) {
-                StatisticsView()
-                    .navigationTransition(.zoom(sourceID: "statisticsSheet", in: namespace))
+        }
+        .sheet(
+            isPresented: $isShowingOnboardingSheet,
+            onDismiss: {
+                onboardingComplete = true
             }
-            .sheet(isPresented: $isShowingSettingsSheet, content: {
-                SettingsView(themeIndex: $colorThemeIndex)
-                    .navigationTransition(.zoom(sourceID: "settingsSheet", in: namespace))
-            })
-            .tint(accentColor)
-            .onAppear {
-                prepareHaptics()
+        ) {
+            OnboardingView(themeIndex: colorThemeIndex)
+                .interactiveDismissDisabled()
+        }
+        .sheet(isPresented: $isShowingConfigurationSheet) {
+            Group {
+                switch timerMode {
+                case .maxHold:
+                    NavigationStack {
+                        SafetyView(themeIndex: colorThemeIndex)
+                    }
+                    .presentationDetents([.fraction(0.7)])
+                case .boxBreathing:
+                    BoxBreathingConfigurationView(themeIndex: colorThemeIndex)
+                        .presentationDetents([.fraction(0.7), .large])
+                case .co2Table:
+                    CO2TableConfigurationView(themeIndex: colorThemeIndex)
+                case .o2Table:
+                    O2TableConfigurationView(themeIndex: colorThemeIndex)
+                }
+            }
+            .navigationTransition(.zoom(sourceID: "configurationSheet", in: namespace))
+        }
+        .sheet(isPresented: $isShowingStatisticsSheet) {
+            StatisticsView()
+                .navigationTransition(.zoom(sourceID: "statisticsSheet", in: namespace))
+                .interactiveDismissDisabled()
+        }
+        .sheet(isPresented: $isShowingSettingsSheet, content: {
+            SettingsView()
+                .navigationTransition(.zoom(sourceID: "settingsSheet", in: namespace))
+                .interactiveDismissDisabled()
+        })
+        .onAppear {
+            
+//            TODO: FIXXXXX.
+//            if !onboardingComplete {
+            if true {
+                isShowingOnboardingSheet = true
+            }
+            
+            Haptics.shared.prepareIfNeeded()
+            Haptics.shared.isEnabled = hapticsEnabled
+
+            if skipInitialRest && timerMode != .boxBreathing {
+                currentWithinRound = 2
+            } else {
+                currentWithinRound = 1
+            }
+        }
+        .onChange(of: hapticsEnabled) { _, newValue in
+            Haptics.shared.isEnabled = newValue
+            UserDefaults.standard.set(newValue, forKey: "hapticsEnabled")
+        }
+        .onChange(of: timerMode) { _, newValue in
+            if let timerConfiguration = timerConfiguration {
                 if skipInitialRest && timerMode != .boxBreathing {
                     currentWithinRound = 2
                 } else {
                     currentWithinRound = 1
                 }
+                phaseTimeRemaining = timerConfiguration.durations[currentWithinRound - 1]
             }
-            .onChange(of: timerMode) { _, newValue in
+        }
+        .onChange(of: currentTime) { _, _ in
+            if currentBreathStatus == .hold {
+                Haptics.shared.play(.rigid)
+            }
+        }
+        .onChange(of: currentBreathStatus) { _, newValue in
+            
+            var animationDuration: TimeInterval = 2
+            
+            if timerMode == .boxBreathing {
                 if let timerConfiguration = timerConfiguration {
-                    if skipInitialRest && timerMode != .boxBreathing {
-                        currentWithinRound = 2
-                    } else {
-                        currentWithinRound = 1
-                    }
-                    phaseTimeRemaining = timerConfiguration.durations[currentWithinRound - 1]
+                    animationDuration = timerConfiguration.durations[currentWithinRound - 1] + 1
                 }
             }
-            .onChange(of: currentTime) { _, _ in
-                if currentBreathStatus == .hold {
-                    Haptics.shared.play(.rigid)
-                }
-            }
-            .onChange(of: currentBreathStatus) { _, newValue in
-                
-                var animationDuration: TimeInterval = 2
-                
-                if timerMode == .boxBreathing {
-                    if let timerConfiguration = timerConfiguration {
-                        animationDuration = timerConfiguration.durations[currentWithinRound - 1] + 1
-                    }
-                }
-                
-                withAnimation(.bouncy(duration: animationDuration, extraBounce: 0.05)) {
-                    stopSound()
-                    switch newValue {
-                    case .inhale:
+            
+            withAnimation(.bouncy(duration: animationDuration, extraBounce: 0.05)) {
+                switch newValue {
+                case .inhale:
+                    waveOffset = K.upperOffset
+                    waveSpacing = K.upperSpacing
+                    //                        isUnderwater = true
+                case .exhale:
+                    waveOffset = K.lowerOffset
+                    waveSpacing = K.lowerSpacing
+                    //                        isUnderwater = false
+                case .hold:
+                    if timerMode != .boxBreathing {
                         waveOffset = K.upperOffset
                         waveSpacing = K.upperSpacing
-//                        isUnderwater = true
-                    case .exhale:
-                        waveOffset = K.lowerOffset
-                        waveSpacing = K.lowerSpacing
-//                        isUnderwater = false
-                    case .hold:
-                        if timerMode != .boxBreathing {
-                            waveOffset = K.upperOffset
-                            waveSpacing = K.upperSpacing
-                            playSound(resource: "Underwater Water Ambience Water Bubbles Movement Peaceful 01", type: "wav")
-//                            isUnderwater = true
-                        }
-                    case .breathe:
-                        waveOffset = K.lowerOffset
-                        waveSpacing = K.lowerSpacing
-//                        isUnderwater = false
-                    case .rest:
-                        waveOffset = K.initialOffset
-                        waveSpacing = K.initialSpacing
-//                        isUnderwater = false
                     }
+                case .breathe:
+                    waveOffset = K.lowerOffset
+                    waveSpacing = K.lowerSpacing
+                    //                        isUnderwater = false
+                case .rest:
+                    waveOffset = K.initialOffset
+                    waveSpacing = K.initialSpacing
+                    //                        isUnderwater = false
                 }
-                
-                
-                
-                
-                
-                
-                
-//                if timerMode == .boxBreathing {
-//                    if let timerConfiguration = timerConfiguration {
-//                        withAnimation(.bouncy(
-//                            duration: timerConfiguration.durations[currentWithinRound - 1],
-//                            extraBounce: 0.05
-//                        )) {
-//                            if currentBreathStatus == .inhale {
-//                                waveInitialOffset = -UIScreen.main.bounds.height*0.3
-//                                waveMaxOffset = 20
-//                            } else if currentBreathStatus == .exhale {
-//                                waveInitialOffset = 50
-//                                waveMaxOffset = 40
-//                            }
-//                        }
-//                    }
-//                } else {
-//                    withAnimation(.bouncy(duration: 2, extraBounce: 0.05)) {
-//                        if currentBreathStatus == .hold {
-//                            waveInitialOffset = -UIScreen.main.bounds.height*0.3
-//                            waveMaxOffset = 20
-//                        } else {
-//                            waveInitialOffset = 0
-//                            waveMaxOffset = 40
-//                        }
-//                    }
-//                }
             }
         }
-    }
-    
-    func prepareHaptics() {
-        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
-        
-        do {
-            engine = try CHHapticEngine()
-            try engine?.start()
-        } catch {
-            print("There was en error creating the engine:", error.localizedDescription)
-        }
-    }
-    
-    func breatheHaptics(duration: TimeInterval, increasing: Bool = true) {
-        
-        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
-        
-        if engine == nil {
-            prepareHaptics()
-        }
-        
-        var events = [CHHapticEvent]()
-        
-        let pulsesPerSecond = 10
-        let pulseCount = pulsesPerSecond * Int(duration)
-        
-        for i in 0..<pulseCount {
-
-            let t = Float(i)/Float(pulseCount - 1)
-            let bunchedPoint: Float = t * t
-            
-            let intensity = CHHapticEventParameter(parameterID: .hapticIntensity, value: 1)
-            let sharpness = CHHapticEventParameter(parameterID: .hapticSharpness, value: t)
-            let relativeTime = duration * Double(bunchedPoint)
-            
-            let event = CHHapticEvent(
-                eventType: .hapticTransient,
-                parameters: [intensity, sharpness],
-                relativeTime: relativeTime
-            )
-            events.append(event)
-        }
-        
-        do {
-            let pattern = try CHHapticPattern(events: events, parameters: [])
-            let player = try engine?.makePlayer(with: pattern)
-            try player?.start(atTime: 0)
-        } catch {
-            print("Failed to play pattern:", error.localizedDescription)
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Haptics.shared.prepareIfNeeded()
+            }
         }
     }
     
     private func start() {
-        isTimerRunning = true
+        withAnimation {
+            isTimerRunning = true
+        }
         UIApplication.shared.isIdleTimerDisabled = true
         startTime = Date()
         
@@ -556,19 +521,22 @@ struct TimerView: View {
         })
         
         if timerMode != .maxHold {
+            guard let timerConfiguration = timerConfiguration else { return }
             if skipInitialRest && timerMode != .boxBreathing {
                 currentWithinRound = 2
             } else {
                 currentWithinRound = 1
             }
-            print(timerConfiguration!)
+            phaseTimeRemaining = timerConfiguration.durations[currentWithinRound - 1]
             nextPhase()
         }
     }
     
     
     private func stop() {
-        isTimerRunning = false
+        withAnimation {
+            isTimerRunning = false
+        }
         UIApplication.shared.isIdleTimerDisabled = false
         startTime = nil
         timer?.invalidate()
@@ -589,14 +557,6 @@ struct TimerView: View {
                 from: Date(timeIntervalSinceNow: -elapsedTime),
                 to: Date()
             )
-        }
-        
-        // Update max hold duration.
-        if timerMode == .maxHold {
-            if elapsedTime > maxHoldDuration {
-                maxHoldDuration = elapsedTime
-                maxHoldDate = Date()
-            }
         }
     }
     
@@ -627,7 +587,7 @@ struct TimerView: View {
             )
             
             if [.inhale, .exhale].contains(currentBreathStatus) {
-                breatheHaptics(duration: timerConfiguration.durations[currentWithinRound - 1])
+                Haptics.shared.breathe(duration: timerConfiguration.durations[currentWithinRound - 1])
             }
             
             phaseTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
@@ -637,6 +597,11 @@ struct TimerView: View {
                     if currentWithinRound == timerConfiguration.numberOfRounds * timerConfiguration.roundLength {
                         phaseTimeRemaining -= 1
                         stop()
+                        save()
+                        Haptics.shared.notify(.success)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            reset()
+                        }
                     } else {
                         currentWithinRound += 1
                         nextPhase()
@@ -650,13 +615,88 @@ struct TimerView: View {
 class Haptics {
     static let shared = Haptics()
     
+    var isEnabled = true
+    private var engine: CHHapticEngine?
+    
     private init() { }
     
+    private func prepareEngine() {
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
+        do {
+            engine = try CHHapticEngine()
+            
+            engine?.resetHandler = { [weak self] in
+                self?.engine = nil
+            }
+            
+            engine?.stoppedHandler = { [weak self] reason in
+                print(reason)
+                self?.engine = nil
+            }
+            
+            try engine?.start()
+        } catch {
+            print("There was an error creating the engine:", error.localizedDescription)
+        }
+    }
+    
+    func prepareIfNeeded() {
+        guard isEnabled else { return }
+        if engine == nil {
+            prepareEngine()
+        }
+    }
+    
+    func breathe(duration: TimeInterval, increasing: Bool = true) {
+        guard isEnabled else { return }
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
+        
+        if engine == nil {
+            prepareEngine()
+        }
+        
+        do {
+            try engine?.start()
+        } catch {
+            print("Failed to start engine:", error.localizedDescription)
+        }
+        
+        var events = [CHHapticEvent]()
+        let pulsesPerSecond = 10
+        let pulseCount = pulsesPerSecond * Int(duration)
+        
+        for i in 0..<pulseCount {
+            let t = Float(i) / Float(max(pulseCount - 1, 1))
+            let bunchedPoint: Float = t * t
+            
+            let intensity = CHHapticEventParameter(parameterID: .hapticIntensity, value: 1)
+            let sharpness = CHHapticEventParameter(parameterID: .hapticSharpness, value: t)
+            let relativeTime = duration * Double(bunchedPoint)
+            
+            let event = CHHapticEvent(
+                eventType: .hapticTransient,
+                parameters: [intensity, sharpness],
+                relativeTime: relativeTime
+            )
+            events.append(event)
+        }
+        
+        do {
+            let pattern = try CHHapticPattern(events: events, parameters: [])
+            let player = try engine?.makePlayer(with: pattern)
+            try player?.start(atTime: 0)
+        } catch {
+            print("Failed to play pattern:", error.localizedDescription)
+        }
+    }
+    
     func play(_ feedbackStyle: UIImpactFeedbackGenerator.FeedbackStyle) {
+        guard isEnabled else { return }
         UIImpactFeedbackGenerator(style: feedbackStyle).impactOccurred()
     }
     
     func notify(_ feedbackType: UINotificationFeedbackGenerator.FeedbackType) {
+        guard isEnabled else { return }
         UINotificationFeedbackGenerator().notificationOccurred(feedbackType)
     }
     
@@ -675,13 +715,14 @@ struct AnimatedTime: View {
     }
     
     var body: some View {
-            HStack {
-                ForEach(Array(formattedTime.enumerated()), id: \.offset) { index, char in
-                    AnimatedDigit(digit: String(char), countUp: countUp)
-                        .id("\(index)-\(char)")
-                }
+        HStack {
+            ForEach(Array(formattedTime.enumerated()), id: \.offset) { index, char in
+                AnimatedDigit(digit: String(char), countUp: countUp)
+                    .offset(y: char == ":" ? -10 : 0)
+                    .id("\(index)-\(char)")
             }
-            .animation(.bouncy(duration: 0.5, extraBounce: 0.2), value: formattedTime)
+        }
+        .animation(.bouncy(duration: 0.5, extraBounce: 0.2), value: formattedTime)
     }
 }
 
@@ -690,28 +731,10 @@ struct AnimatedDigit: View {
     var countUp: Bool = false
     
     var body: some View {
-            Text(digit)
-                .monospacedDigit()
-                .transition(.push(from: countUp ? .bottom : .top).combined(with: .blurReplace))
+        Text(digit)
+            .monospacedDigit()
+            .transition(.push(from: countUp ? .bottom : .top).combined(with: .blurReplace))
     }
-}
-
-//func thefont(size: CGFloat = 180, weight: UIFont.Weight = .semibold, width: UIFont.Width = .compressed) -> Font {
-//    let baseFont = UIFont.systemFont(ofSize: size, weight: weight, width: width)
-//    let descriptor = CTFontDescriptorCreateCopyWithFeature(
-//        baseFont.fontDescriptor,
-//        kStylisticAlternativesType as CFNumber,
-//        6 as CFNumber)
-//    return Font(UIFont(descriptor: descriptor, size: 0.0))
-//}
-
-func thefont(size: CGFloat = 180, weight: UIFont.Weight = .semibold, width: UIFont.Width = .compressed) -> Font {
-    let baseFont = UIFont.systemFont(ofSize: size, weight: weight, width: width)
-    let descriptor = CTFontDescriptorCreateCopyWithFeature(
-        baseFont.fontDescriptor,
-        kStylisticAlternativesType as CFNumber,
-        6 as CFNumber)
-    return Font(UIFont(descriptor: descriptor, size: 0.0))
 }
 
 #Preview {

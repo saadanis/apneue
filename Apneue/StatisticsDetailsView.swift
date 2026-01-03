@@ -15,10 +15,13 @@ struct StatisticsDetailsView: View {
     
     @State var mode: TimerMode
     
+    @State var themeIndex: Int
+    
     @Query var entries: [Entry]
     
-    init(mode: TimerMode) {
+    init(mode: TimerMode, themeIndex: Int) {
         self.mode = mode
+        self.themeIndex = themeIndex
         _entries = Query(
             filter: #Predicate<Entry> { $0.mode == mode.rawValue },
             sort: \Entry.timestamp,
@@ -29,7 +32,7 @@ struct StatisticsDetailsView: View {
     @State private var isShowingDeleteAllDialog = false
     
     var body: some View {
-        List {
+        ThemedList(themeIndex: themeIndex) {
             Section("All Data") {
                 if entries.isEmpty {
                     HStack {
@@ -76,9 +79,6 @@ struct StatisticsDetailsView: View {
         }
         .navigationTitle(mode.rawValue)
         .navigationBarBackButtonHidden(editMode?.wrappedValue.isEditing == true)
-        .fontDesign(.rounded)
-        .scrollContentBackground(.hidden)
-        .background(Color.accentColor.opacity(0.08))
     }
     
     private func deleteEntry(offsets: IndexSet) {
@@ -110,26 +110,10 @@ struct StatisticsDetailsView: View {
         return Entry(duration: randomDuration, mode: TimerMode.allCases.randomElement()!, timestamp: calendar.date(byAdding: .day, value: -randomDays, to: Date())!)
     }
     
-    let moreEntries: [Entry] = [
-        Entry(duration: 50, mode: .maxHold, timestamp: Date()),
-        Entry(duration: 40, mode: .boxBreathing, timestamp: Date.now.addingTimeInterval(-86400*4)),
-        Entry(duration: 20, mode: .maxHold, timestamp: Date.now.addingTimeInterval(-86400*2)),
-        Entry(duration: 30, mode: .maxHold, timestamp: Date.now.addingTimeInterval(-86400*3)),
-    ]
-    
-    let moreMoreEntries: [Entry] = [
-        Entry(duration: 50, mode: .boxBreathing, timestamp: Date()),
-        Entry(duration: 40, mode: .boxBreathing, timestamp: Date.now.addingTimeInterval(-86400*4)),
-        Entry(duration: 20, mode: .boxBreathing, timestamp: Date.now.addingTimeInterval(-86400*2)),
-        Entry(duration: 30, mode: .boxBreathing, timestamp: Date.now.addingTimeInterval(-86400*3)),
-    ]
-    
     entries.forEach(container.mainContext.insert)
-    moreEntries.forEach(container.mainContext.insert)
-    moreMoreEntries.forEach(container.mainContext.insert)
     
     return NavigationStack {
-        StatisticsDetailsView(mode: .maxHold)
+        StatisticsDetailsView(mode: .maxHold, themeIndex: 0)
             .tint(K.colorThemes[0].accentColor)
             .modelContainer(container)
     }

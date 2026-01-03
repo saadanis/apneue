@@ -1,0 +1,132 @@
+{
+  "fill" : {
+    "automatic-gradient" : "srgb:0.33333,0.33333,0.33333,1.00000"
+  },
+  "groups" : [
+    {
+      "blur-material" : 0.3,
+      "layers" : [
+        {
+          "image-name" : "4 – Layer 2.svg",
+          "name" : "4 – Layer 2",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              30
+            ]
+          }
+        }
+      ],
+      "name" : "Group",
+      "position" : {
+        "scale" : 1.15,
+        "translation-in-points" : [
+          0,
+          0
+        ]
+      },
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 1
+      }
+    },
+    {
+      "blur-material" : 0.2,
+      "layers" : [
+        {
+          "image-name" : "3 – Layer-1.svg",
+          "name" : "3 – Layer-1"
+        }
+      ],
+      "position" : {
+        "scale" : 1.15,
+        "translation-in-points" : [
+          0,
+          0
+        ]
+      },
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 1
+      }
+    },
+    {
+      "blur-material" : 0.1,
+      "layers" : [
+        {
+          "image-name" : "2 – Layer 2.svg",
+          "name" : "2 – Layer 2"
+        }
+      ],
+      "position" : {
+        "scale" : 1.15,
+        "translation-in-points" : [
+          0,
+          0
+        ]
+      },
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 1
+      }
+    },
+    {
+      "blur-material" : 0.5,
+      "layers" : [
+        {
+          "fill" : {
+            "solid" : "srgb:0.79621,0.79621,0.79621,1.00000"
+          },
+          "image-name" : "3 – Layer 4.svg",
+          "name" : "3 – Layer 4",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -0.49987219213545586,
+              0.0001937332815487025
+            ]
+          }
+        },
+        {
+          "image-name" : "1 – Layer 2.svg",
+          "name" : "1 – Layer 2"
+        }
+      ],
+      "position" : {
+        "scale" : 1.15,
+        "translation-in-points" : [
+          0,
+          0
+        ]
+      },
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.5
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

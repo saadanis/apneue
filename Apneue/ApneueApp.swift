@@ -8,18 +8,22 @@
 import SwiftUI
 import SwiftData
 import HealthKit
+import StoreKit
+import Foundation
 
 @main
 struct ApneueApp: App {
+    
+    @AppStorage("colorThemeIndex") private var colorThemeIndex: Int = 0
+    @AppStorage("lastHandledVersion") private var lastHandledVersion: String = ""
+    
+    @StateObject private var store = StoreManager()
     
     init() {
         UserDefaults.standard.register(defaults: [
             
             "defaultTimerMode": "Max Hold",
             "lastUsedMode": "Max Hold",
-            
-            "maxHoldDuration": 0,
-            "maxHoldDate": Date(),
             
             "boxBreathingDuration": 4,
             "boxBreathingNumberOfRounds": 10,
@@ -44,6 +48,14 @@ struct ApneueApp: App {
             
             "skipInitialRest": true,
         ])
+        
+        let currentVersion =
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        
+        if lastHandledVersion != currentVersion {
+            colorThemeIndex = 0
+            lastHandledVersion = currentVersion
+        }
     }
     
     var sharedModelContainer: ModelContainer = {
@@ -62,6 +74,8 @@ struct ApneueApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .tint(K.colorThemes[colorThemeIndex].accentColor)
+                .environmentObject(store)
         }
         .modelContainer(sharedModelContainer)
     }
@@ -101,7 +115,6 @@ class HealthKitManager: ObservableObject {
                 print("Failed to request, not denied authorization, you can retry.")
             }
         }
-        
     }
     
     func getAuthorizationStatus() -> HKAuthorizationStatus {
@@ -109,9 +122,107 @@ class HealthKitManager: ObservableObject {
     }
 }
 
-struct ColorPalette {
-    let name: String
-    let colors: [Color]
+@MainActor
+final class StoreManager: ObservableObject {
+    
+    @Published private(set) var product: Product?
+    @Published private(set) var isProUnlocked: Bool = false
+    
+    private var updatesTask: Task<Void, Never>?
+    
+    init() {
+        updatesTask = listenForTransactionUpdates()
+        Task {
+            await loadProduct()
+            await refreshEntitlements()
+        }
+    }
+    
+    deinit {
+        updatesTask?.cancel()
+    }
+    
+    func loadProduct() async {
+        do {
+            let products = try await Product.products(for: ["com.saadanis.Apneue.Supporter"])
+            product = products.first
+        } catch {
+            product = nil
+        }
+    }
+    
+    func buy() async -> Bool {
+        guard let product else { return false }
+        
+        do {
+            let result = try await product.purchase()
+            switch result {
+            case .success(let verification):
+                let transaction = try checkVerified(verification)
+                await transaction.finish()
+                await refreshEntitlements()
+                return true
+                
+            case .userCancelled, .pending:
+                return false
+                
+            @unknown default:
+                return false
+            }
+        } catch {
+            return false
+        }
+    }
+    
+    func restorePurchases() async {
+        // StoreKit2 restore is typically: sync + entitlement refresh
+        do { try await AppStore.sync() } catch { }
+        await refreshEntitlements()
+    }
+    
+    func refreshEntitlements() async {
+        var unlocked = false
+        
+        for await result in Transaction.currentEntitlements {
+            do {
+                let transaction = try checkVerified(result)
+                if transaction.productID == "com.saadanis.Apneue.Supporter" {
+                    unlocked = true
+                    break
+                }
+            } catch {
+                // ignore unverified
+            }
+        }
+        
+        isProUnlocked = unlocked
+    }
+    
+    private func listenForTransactionUpdates() -> Task<Void, Never> {
+        Task.detached { [weak self] in
+            for await update in Transaction.updates {
+                guard let self else { continue }
+                do {
+                    let transaction = try await self.checkVerified(update)
+                    await transaction.finish()
+                    await self.refreshEntitlements()
+                } catch {
+                    // ignore unverified
+                }
+            }
+        }
+    }
+    
+    private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
+        switch result {
+        case .verified(let safe): return safe
+        case .unverified: throw StoreKitError.notEntitled
+        }
+    }
+}
+
+enum StoreKitError: Error {
+    case notEntitled
 }
 
 struct ColorTheme {

@@ -21,23 +21,6 @@ final class Entry {
     }
 }
 
-@Model
-final class Reminder {
-    @Attribute(.unique) var id: String = ""
-    var date: Date = Date.now
-    
-    init(id: String = UUID().uuidString, date: Date) {
-        self.id = id
-        self.date = date
-    }
-}
-
-enum TimerStatus {
-    case new
-    case started
-    case stopped
-}
-
 enum BreathStatus: String, CaseIterable {
     case inhale = "Inhale"
     case exhale = "Exhale"

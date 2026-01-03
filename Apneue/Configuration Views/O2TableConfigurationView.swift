@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct TableConfiguration {
     var numberOfRounds: Int
@@ -59,7 +60,20 @@ struct O2TableConfigurationView: View {
     @Environment(\.dismiss) var dismiss
     @Namespace private var namespace
     
-    let maxHoldDuration = UserDefaults.standard.object(forKey: "maxHoldDuration") as! TimeInterval
+    private static var maxHoldDescriptor: FetchDescriptor<Entry> = {
+        var descriptor = FetchDescriptor<Entry>(
+            predicate: #Predicate { $0.mode == "Max Hold" },
+            sortBy: [SortDescriptor(\.duration, order: .reverse)]
+        )
+        descriptor.fetchLimit = 1
+        return descriptor
+    }()
+    
+    @Query(Self.maxHoldDescriptor) var maxHoldEntry: [Entry]
+    
+    var maxHoldDuration: TimeInterval {
+        maxHoldEntry.first?.duration ?? 0
+    }
     
     @State var isRotated = false
     
@@ -81,9 +95,11 @@ struct O2TableConfigurationView: View {
     
     @State var isShowingPreviewSheet = false
     
+    @State var themeIndex: Int
+    
     var body: some View {
         NavigationStack {
-            List {
+            ThemedList(themeIndex: themeIndex, isOpaque: false) {
                 Text("O₂ Tables focus on enhancing your body’s ability to function with lower oxygen levels. In this mode, rest periods remain constant while breath-hold durations gradually increase. This helps build hypoxia tolerance and improve overall breath-hold performance.")
                     .listRowInsets(.horizontal, 0)
                     .listRowBackground(Color.clear)
@@ -144,13 +160,9 @@ struct O2TableConfigurationView: View {
             }
             .navigationTitle("O₂ Table")
             .listRowSpacing(10)
-            .scrollContentBackground(.hidden)
-            .background(Color.accentColor.opacity(0.08))
-            .fontDesign(.rounded)
             .sheet(isPresented: $isShowingPreviewSheet) {
-                TablePreviewView(numberOfRounds: o2NumberOfRounds, restTimes: tableConfiguration.restTimes, holdTimes: tableConfiguration.holdTimes)
-                .presentationDetents([.fraction(0.8), .large])
-                .fontDesign(.rounded)
+                TablePreviewView(numberOfRounds: o2NumberOfRounds, restTimes: tableConfiguration.restTimes, holdTimes: tableConfiguration.holdTimes, themeIndex: themeIndex)
+                .presentationDetents([.fraction(0.8)])
                 .navigationTransition(.zoom(sourceID: "previewSheet", in: namespace))
             }
         }
@@ -158,5 +170,5 @@ struct O2TableConfigurationView: View {
 }
 
 #Preview {
-    O2TableConfigurationView()
+    O2TableConfigurationView(themeIndex: 0)
 }

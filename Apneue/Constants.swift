@@ -18,184 +18,129 @@ struct K {
     static let upperSpacing: CGFloat = 10
     static let lowerSpacing: CGFloat = 30
     
-    static let colorThemes: [ColorTheme] = [
-        .init(name: "Ocean", accentColor: .blue, backgroundColors: [
-            .white,
-            .blue,
-        ], waveColors: [
-            .blue,
-            .blue,
-            .blue,
-            .blue,
-        ]),
-        .init(name: "Lava", accentColor: .red, backgroundColors: [.black], waveColors: [.yellow, .red]),
-        .init(name: "Cotton", accentColor: .pink, backgroundColors: [.pink], waveColors: [.cyan]),
-        .init(name: "Ocean Dawn",
-              accentColor: Color(hex: "#FF6F61"),
-              backgroundColors: [Color(hex: "#FFDAB9"), Color(hex: "#87CEFA")],
-              waveColors: [Color(hex: "#ADD8E6"), Color(hex: "#66CDAA"), Color(hex: "#F0FFFF")]),
-        
-            .init(name: "Midnight Abyss",
-                  accentColor: Color(hex: "#00BFFF"),
-                  backgroundColors: [Color(hex: "#000080"), Color(hex: "#191970")],
-                  waveColors: [Color(hex: "#004F4F"), Color(hex: "#001F3F"), Color(hex: "#000000")]),
-        
-            .init(name: "Tropical Sunset",
-                  accentColor: Color(hex: "#FFD700"),
-                  backgroundColors: [Color(hex: "#FF69B4"), Color(hex: "#FF4500")],
-                  waveColors: [Color(hex: "#FF7F7F"), Color(hex: "#DA70D6"), Color(hex: "#FFA07A")]),
-        
-            .init(name: "Glacial Calm",
-                  accentColor: Color(hex: "#00FFFF"),
-                  backgroundColors: [Color(hex: "#E0FFFF"), Color(hex: "#D3D3D3")],
-                  waveColors: [Color(hex: "#C0C0C0"), Color(hex: "#FFFFFF"), Color(hex: "#B0E0E6")]),
-        
-            .init(name: "Stormfront",
-                  accentColor: Color(hex: "#FFBF00"),
-                  backgroundColors: [Color(hex: "#36454F"), Color(hex: "#708090")],
-                  waveColors: [Color(hex: "#2F4F4F"), Color(hex: "#6A5ACD"), Color(hex: "#A9A9A9")]),
-        
-            .init(name: "Emerald Bay",
-                  accentColor: Color(hex: "#32CD32"),
-                  backgroundColors: [Color(hex: "#98FF98"), Color(hex: "#E0FFFF")],
-                  waveColors: [Color(hex: "#90EE90"), Color(hex: "#00FFFF"), Color(hex: "#20B2AA")]),
-        
-            .init(name: "Serenity",
-                  accentColor: .pink,
-                  backgroundColors: [.blue],
-                  waveColors: [
-                    Color(hex: "#5BCEFA"),
-                    Color(hex: "#F5A9B8"),
-                    .white,
-                    Color(hex: "#F5A9B8"),
-                    Color(hex: "#5BCEFA")
-                  ]),
-
-        
-            .init(name: "Desert Mirage",
-                  accentColor: Color(hex: "#CC5500"),
-                  backgroundColors: [Color(hex: "#FFE4B5"), Color(hex: "#B0E0E6")],
-                  waveColors: [Color(hex: "#F5F5DC"), Color(hex: "#D2B48C"), Color(hex: "#ADD8E6")]),
-        
-            .init(name: "Aurora Dream",
-                  accentColor: Color(hex: "#FF1493"),
-                  backgroundColors: [Color(hex: "#800080"), Color(hex: "#00FF7F")],
-                  waveColors: [Color(hex: "#8A2BE2"), Color(hex: "#00FFFF"), Color(hex: "#FF69B4")]),
-        
-            .init(name: "Zen Lagoon",
-                  accentColor: Color(hex: "#008080"),
-                  backgroundColors: [Color(hex: "#B0E0E6"), Color(hex: "#AFEEEE")],
-                  waveColors: [Color(hex: "#00CED1"), Color(hex: "#2E8B57"), Color(hex: "#F8F8FF")]),
-        
-            .init(name: "Crimson Tide",
-                  accentColor: Color(hex: "#DC143C"),
-                  backgroundColors: [Color(hex: "#8B0000"), Color(hex: "#FFC0CB")],
-                  waveColors: [Color(hex: "#800020"), Color(hex: "#C71585"), Color(hex: "#FFDAB9")]),
-        
-            .init(name: "Pride Spectrum",
-                  accentColor: Color(hex: "#FF7F7F"),
-                  backgroundColors: [Color(hex: "#FF7F7F"), Color(hex: "#FFD580"), Color(hex: "#87CEFA")],
-                  waveColors: [Color(hex: "#FF6F61"), Color(hex: "#FFFACD"), Color(hex: "#AFEEEE")]),
-        
-            .init(name: "Trans Serenity",
-                  accentColor: Color(hex: "#FFB6C1"),
-                  backgroundColors: [Color(hex: "#ADD8E6"), Color(hex: "#FFFFFF")],
-                  waveColors: [Color(hex: "#FFB6C1"), Color(hex: "#FFFFFF"), Color(hex: "#ADD8E6")]),
-        
-            .init(name: "Bi Horizon",
-                  accentColor: Color(hex: "#D60270"),
-                  backgroundColors: [Color(hex: "#D60270"), Color(hex: "#9B4F96"), Color(hex: "#0038A8")],
-                  waveColors: [Color(hex: "#D66DBD"), Color(hex: "#B48FD6"), Color(hex: "#5A7DB3")]),
-        
-            .init(name: "Earthbound",
-                  accentColor: Color(hex: "#228B22"),
-                  backgroundColors: [Color(hex: "#87CEFA"), Color(hex: "#98FB98")],
-                  waveColors: [Color(hex: "#20B2AA"), Color(hex: "#8FBC8F"), Color(hex: "#B0E0E6")]),
-        
-            .init(name: "Pink Ribbon",
-                  accentColor: Color(hex: "#FF69B4"),
-                  backgroundColors: [Color(hex: "#FFC0CB"), Color(hex: "#FFF5F5")],
-                  waveColors: [Color(hex: "#FFB6C1"), Color(hex: "#FFFFFF"), Color(hex: "#E6E6E6")]),
-        
-            .init(name: "Neurodivergent Glow",
-                  accentColor: Color(hex: "#00BFFF"),
-                  backgroundColors: [Color(hex: "#00BFFF"), Color(hex: "#8A2BE2"), Color(hex: "#FFFACD")],
-                  waveColors: [Color(hex: "#4682B4"), Color(hex: "#F0E68C"), Color(hex: "#D8BFD8")]),
-        
-            .init(name: "Mental Health Calm",
-                  accentColor: Color(hex: "#50C878"),
-                  backgroundColors: [Color(hex: "#BDFCC9"), Color(hex: "#ADD8E6")],
-                  waveColors: [Color(hex: "#66CDAA"), Color(hex: "#E0FFFF"), Color(hex: "#B0E0E6")]),
-        
-            .init(name: "Black & Proud",
-                  accentColor: Color(hex: "#FFD700"),
-                  backgroundColors: [Color(hex: "#2E2E2E"), Color(hex: "#1C1C1C")],
-                  waveColors: [Color(hex: "#1A1A1A"), Color(hex: "#3D3D3D"), Color(hex: "#FFD700")]),
-        
-            .init(name: "Panlight",
-                  accentColor: Color(hex: "#FFD700"),
-                  backgroundColors: [Color(hex: "#FF218C"), Color(hex: "#FFD700"), Color(hex: "#21B1FF")],
-                  waveColors: [Color(hex: "#FF69B4"), Color(hex: "#FFFACD"), Color(hex: "#B2FFFF")]),
-        
-            .init(name: "Peaceflow",
-                  accentColor: Color(hex: "#B57EDC"),
-                  backgroundColors: [Color(hex: "#A0DFF0"), Color(hex: "#E6E6FA")],
-                  waveColors: [Color(hex: "#C8A2C8"), Color(hex: "#B0E0E6"), Color(hex: "#F5FFFA")])
+    static let appIconNames: [String] = [
+        "ApneueIcon",
+        "MintIcon",
+        "AbyssIcon",
+        "CrimsonIcon",
+        "OrangeIcon",
+        "IndigoIcon",
+        "RetroIcon",
+        "PeacefulIcon",
+        "BloomIcon",
+        "NailIcon"
     ]
     
-    static let customColorPalettes2: [ColorPalette] = [
-        ColorPalette(
-            name: "Ocean",
-            colors: [
-                Color(hex: "#1f8fff"),
-                Color(hex: "#00bfff"),
-                Color(hex: "#81cefe"),
-                Color(hex: "#0989f1"),
-                Color(hex: "#0434af")
-            ]
+    static let colorThemes: [ColorTheme] = [
+        
+        //        Simple
+        
+        .init(name: "Ocean",
+              accentColor: .blue,
+              backgroundColors: [
+                Color(hex: "B5E7FF"),
+                .white
+              ],
+              waveColors: [
+                Color(hex: "74B7FF"),
+                Color(hex: "49A2FF"),
+                Color(hex: "1082FF"),
+                Color(hex: "0056D8")
+              ]),
+        .init(name: "Arctic",
+              accentColor: .cyan,
+              backgroundColors: [.cyan, .clear],
+              waveColors: [.blue, .teal]),
+        .init(name: "Mint",
+              accentColor: Color(hex: "#50C878"),
+              backgroundColors: [Color(hex: "#55E670"), .clear],
+              waveColors: [Color(hex: "#00E99A"), Color(hex: "009BB0")]),
+        .init(name: "Abyss",
+              accentColor: .gray,
+              backgroundColors: [.white, .clear],
+              waveColors: [.black]),
+        .init(name: "Cappuccino",
+              accentColor: Color(hex: "9D511F"),
+              backgroundColors: [Color(hex: "EAB082"), .clear],
+              waveColors: [Color(hex: "917358"), Color(hex: "644937")]),
+        .init(name: "Coral",
+              accentColor: Color(hex: "E36C6D"),
+              backgroundColors: [Color(hex: "DD916E"), .clear],
+              waveColors: [Color(hex: "E36C6D")]),
+        
+        
+        //        A Little Less Simple
+        
+            .init(
+                name: "Crimson",
+                accentColor: Color(hex: "#C60000"),
+                backgroundColors: [Color(hex: "#D10000"), Color(hex: "#960000")],
+                waveColors: [Color(hex: "#B30000"), Color(hex: "#FE0000")]),
+        .init(
+            name: "Orange",
+            accentColor: Color(hex: "#FF5D14"),
+            backgroundColors: [Color(hex: "#CD4F15"), Color(hex: "#A63200")],
+            waveColors: [Color(hex: "#FF6A1A"), Color(hex: "#CC3A00")]),
+        .init(name: "Gold",
+              accentColor: Color(hex: "CA9702"),
+              backgroundColors: [Color(hex: "FFC700"), Color(hex: "A66A00"), Color(hex: "828282")],
+              waveColors: [Color(hex: "D4AC35"), Color(hex: "CA9702")]),
+        .init(name: "Matcha",
+              accentColor: Color(hex: "6AAE23"),
+              backgroundColors: [Color(hex: "DBE84E")],
+              waveColors: [
+                Color(hex: "A4DD62"),
+                Color(hex: "89C247")
+              ]),
+        .init(
+            name: "Teal",
+            accentColor: Color(hex: "027F80"),
+            backgroundColors: [Color(hex: "04E3E5"), Color(hex: "9FDA00")],
+            waveColors: [Color(hex: "03BCBE"),Color(hex: "016B6C")]
         ),
-        ColorPalette(
-            name: "Lava",
-            colors: [
-                Color(hex: "#ff4500"),
-                Color(hex: "#ff6347"),
-                Color(hex: "#ff7f50"),
-                Color(hex: "#ff8c00"),
-                Color(hex: "#ff0000")
-            ]
+        .init(
+            name: "Indigo",
+            accentColor: Color(hex: "9C06FF"),
+            backgroundColors: [Color(hex: "47E9FF"), Color(hex: "0048BF")],
+            waveColors: [Color(hex: "9C06FF"),Color(hex: "5C00CC")]
         ),
-        ColorPalette(
-            name: "Acid",
-            colors: [
-                Color(hex: "#b0bf1a"),
-                Color(hex: "#CBE315"),
-                Color(hex: "#FFFE2F"),
-                Color(hex: "#FFE52F")
-            ]
-        ),
-        ColorPalette(
-            name: "Pastel",
-            colors: [
-                Color(hex: "#ffadad"),
-                Color(hex: "#ffd6a5"),
-                Color(hex: "#fdffb6"),
-                Color(hex: "#caffbf"),
-                Color(hex: "#9bf6ff"),
-                Color(hex: "#a0c4ff"),
-                Color(hex: "#bdb2ff"),
-                Color(hex: "#ffc6ff")
-            ]
-        ),
-        ColorPalette(
-            name: "Spectrum",
-            colors: [
-                Color(hex: "#00A86B"),
-                Color(hex: "#FFD700"),
-                Color(hex: "#FF7F00"),
-                Color(hex: "#FF0000"),
-                Color(hex: "#8B00FF"),
-                Color(hex: "#0000FF")
-            ]
-        )
+        //        Definitely Not Simple
+        .init(name: "Retro",
+              accentColor: Color(hex: "ff4281"),
+              backgroundColors: [Color(hex: "08E2FF"), Color(hex: "2941CC")],
+              waveColors: [Color(hex: "ff4281"), Color(hex: "ffec3d")]),
+        .init(name: "Peaceful",
+              accentColor: Color(hex: "#B86EEC"),
+              backgroundColors: [Color(hex: "#37D4FF"), Color(hex: "#6363F4")],
+              waveColors: [Color(hex: "#B86EEC"), Color(hex: "#1AD6ED"), Color(hex: "#54F5A5"), Color(hex: "6CF47D")]),
+        .init(name: "Bloom",
+              accentColor: Color(hex: "FF6B88"),
+              backgroundColors: [Color(hex: "01B9FF"), Color(hex: "74CEE9")],
+              waveColors: [Color(hex: "FFC2CE"), Color(hex: "FF476C")]),
+        .init(name: "Draft",
+              accentColor: Color(hex: "#DE2BB3"),
+              backgroundColors: [Color(hex: "#D60270"), Color(hex: "#C722BC"), Color(hex: "#0038A8")],
+              waveColors: [Color(hex: "#DE2BB3"), Color(hex: "#9143DA"), Color(hex: "#0012EF"), Color(hex: "#1890FF")]),
+        .init(name: "Acid",
+              accentColor: Color(hex: "9B59D0"),
+              backgroundColors: [
+                Color(hex: "#3EF1FF"),
+                Color(hex: "#9B59D0")
+              ],
+              waveColors: [
+                Color(hex: "#FFF9A5"),
+                Color(hex: "#F1FF00"),
+                Color(hex: "#20ff00"),
+                .black,
+              ]),
+        .init(name: "Lava",
+              accentColor: Color(hex: "ff0000"),
+              backgroundColors: [
+                Color(hex: "#000000")
+              ],
+              waveColors: [
+                Color(hex: "#ff0000"),
+                Color(hex: "#ffcc00")
+              ]),
     ]
 }

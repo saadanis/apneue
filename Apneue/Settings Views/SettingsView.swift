@@ -6,148 +6,190 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct SettingsView: View {
     
     @Environment(\.dismiss) var dismiss
+    @Environment(\.requestReview) var requestReview
+    @Environment(\.modelContext) private var modelContext
     
-    @AppStorage("defaultTimerMode") var defaultTimerMode: String = "Max Hold"
-        
-    @Binding var themeIndex: Int
+    @Environment(\.colorScheme) private var colorScheme
+    
+    @EnvironmentObject var store: StoreManager
+    
+    @AppStorage("defaultTimerMode") var defaultTimerMode: String = ""
+    @AppStorage("hapticsEnabled") var hapticsEnabled: Bool = true
+    @AppStorage("skipInitialRest") var skipInitialRest: Bool = true
+    
+    @Query(sort: \Entry.timestamp, order: .reverse) var entries: [Entry]
+    
+    @AppStorage("colorThemeIndex") private var themeIndex: Int = 0
     
     let themes = K.colorThemes
     let themesCount = K.colorThemes.count
     
-    @State private var transitionDirection: CGFloat = 0
+    
+    let appURL = URL(string: "https://apps.apple.com/app/apneue/id6748847361")!
+    
+    @State private var goToSupporterView = false
     
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    VStack(spacing: 15) {
-                        HStack(alignment: .center, spacing: 5) {
-                            Text("Upgrade to Apneue")
-                                .font(.title3)
-                                .fontWeight(.bold)
-                            Text("PRO")
-                                .foregroundStyle(.white)
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .padding(.vertical, 3)
-                                .padding(.horizontal, 6)
-                                .glassEffect(.clear.tint(Color.accentColor), in: .capsule)
-                        }
-                        .padding(.top, 4)
-                        Text("For a one-time purchase of only **$4.99**, get detailed statistics, unique themes, custom tables, and a lot more.")
-                            .multilineTextAlignment(.center)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Button {
-                            
-                        } label: {
-                            Text("Learn More")
-                                .foregroundStyle(.white)
-                                .fontWeight(.semibold)
-                                .padding(.vertical, 5)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .buttonStyle(.plain)
-                        .glassEffect(.regular.interactive().tint(Color.accentColor))
-                    }
-//                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .background {
-                        WaterView<EmptyView, EmptyView>(waveColors: themes[themeIndex].waveColors, skyColors: themes[themeIndex].backgroundColors) {
-                            EmptyView()
-                        }
-//                        .overlay {
-//                            Color.black.opacity(0.2)
-//                        }
-                    }
-                }
-                Section {
-                    HStack {
-                        Button {
-                            themeIndex = (themeIndex - 1 + themesCount) % themesCount
-                        } label: {
-                            Image(systemName: "chevron.left")
-                        }
-                        .frame(width: 36, height: 36, alignment: .center)
-                        .glassEffect(.regular.interactive(), in: Circle())
-                        .buttonStyle(.borderless)
-                        Spacer()
-                        VStack {
-                            Text("Theme")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text(themes[themeIndex].name)
-                                .fontWeight(.semibold)
-                        }
-                        Spacer()
-                        Button {
-                            themeIndex = (themeIndex + 1) % themesCount
-                        } label: {
-                            Image(systemName: "chevron.right")
-                        }
-                        .frame(width: 36, height: 36, alignment: .center)
-                        .glassEffect(.regular.interactive(), in: Circle())
-                        .buttonStyle(.borderless)
-                    }
-                }
-                Section {
+            ThemedList(themeIndex: themeIndex) {
+                if !store.isProUnlocked {
+                    Section("") {
                     NavigationLink {
-                        EmptyView()
+                        SupporterView()
                     } label: {
-                        Label("Sounds & Haptics", systemImage: "speaker.wave.2.fill")
+                        VStack(alignment: .leading, spacing: 7) {
+                            Image(systemName: "heart")
+                                .font(.title3)
+                                .foregroundStyle(.white)
+                                .frame(width: 32, height: 32)
+                                .background(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.pink.darker(by: -10),
+                                            Color.pink
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                            Text("Support Apneue")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            Text("For a one-time fee, unlock themes, app icons, and support development.")
+                                .multilineTextAlignment(.leading)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .padding(.trailing, 6)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .listRowBackground(
+                        Color.pink.saturation(0.3).brightness(colorScheme == .dark ? -0.4 : 0.5)
+                    )
+                }
+            }
+                Section("Appearance") {
+                    NavigationLink {
+                        ThemesView()
+                    } label: {
+                        HStack {
+                            ThemedLabel(themeIndex: themeIndex) {
+                                Text("Theme")
+                            } icon: {
+                                Image(systemName: "paintpalette")
+                                    .font(.footnote)
+                                    .fontWeight(.medium)
+                            }
+                            Spacer()
+                            Text(K.colorThemes[themeIndex].name)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    NavigationLink {
+                        IconsView()
+                    } label: {
+                        HStack {
+                            ThemedLabel("App Icon", systemImage: "app.grid", themeIndex: themeIndex)
+                            Spacer()
+                            Text((UIApplication.shared.alternateIconName ?? "Ocean").replacingOccurrences(of: "Icon", with: ""))
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
-                Section {
+                Section("Preferences") {
                     Picker(selection: $defaultTimerMode) {
-                        Text("Use Last Selection").tag("")
+                        Text("Last Selection").tag("")
+                        Divider()
                         Text("Max Hold").tag("Max Hold")
                         Text("Box Breathing").tag("Box Breathing")
                         Text("CO₂ Table").tag("CO₂ Table")
                         Text("O₂ Table").tag("O₂ Table")
                     } label: {
-                        Text("Default Timer Mode")
+                        ThemedLabel("Default Mode", systemImage: "dot.circle", themeIndex: themeIndex)
                     }
                     .pickerStyle(.menu)
+                    Toggle(isOn: $skipInitialRest) {
+                        ThemedLabel(themeIndex: themeIndex) {
+                            VStack(alignment: .leading) {
+                                Text("Skip Initial Rest")
+                                Text("Enabling this will skip the first rest period for CO₂ and O₂ timers.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.leading)
+                                    .padding(.trailing, 5)
+                            }
+                        } icon: {
+                            Image(systemName: "forward.end")
+                                .rotationEffect(.degrees(skipInitialRest ? 0 : 180))
+                                .animation(.bouncy(extraBounce: 0.2), value: skipInitialRest)
+                        }
+                    }
+                    Toggle(isOn: $hapticsEnabled) {
+                        ThemedLabel(themeIndex: themeIndex) {
+                            Text("Haptic Feedback")
+                        } icon: {
+                            Image(systemName: "waveform")
+                            //                                .fontWeight(.heavy)
+                                .symbolVariant(hapticsEnabled ? .none : .slash)
+                                .contentTransition(.symbolEffect(.replace))
+                        }
+                    }
                 }
-                Section {
+                Section("Integrations") {
                     NavigationLink {
-                        HealthKitSettingsView()
+                        HealthKitSettingsView(themeIndex: themeIndex)
                     } label: {
-                        Label("Apple Health", systemImage: "heart.fill")
+                        ThemedLabel("Apple Health", systemImage: "heart", themeIndex: themeIndex)
                     }
                     NavigationLink {
-                        RemindersSettingsView()
+                        RemindersSettingsView(themeIndex: themeIndex)
                     } label: {
-                        Label("Reminders", systemImage: "bell.fill")
+                        ThemedLabel("Reminders", systemImage: "bell", themeIndex: themeIndex)
                     }
                 }
                 Section("Instructions") {
                     NavigationLink {
-                        UsageView()
+                        UsageView(themeIndex: themeIndex)
                     } label: {
-                        Label("Usage", systemImage: "info.circle.fill")
+                        ThemedLabel("Usage", systemImage: "info.circle", themeIndex: themeIndex)
                     }
                     NavigationLink {
-                        
+                        SafetyView(themeIndex: themeIndex)
                     } label: {
-                        Label("Safety", systemImage: "exclamationmark.triangle.fill")
+                        ThemedLabel("Safety", systemImage: "exclamationmark.triangle", themeIndex: themeIndex)
                     }
                 }
-                Section {
+                Section("") {
+                    ShareLink(item: appURL) {
+                        ThemedLabel("Share Apneue", systemImage: "square.and.arrow.up", themeIndex: themeIndex)
+                    }
+                    .buttonStyle(.plain)
+                    Button(action: {
+                        requestReview()
+                    }, label: {
+                        ThemedLabel("Leave a Rating", systemImage: "star", themeIndex: themeIndex)
+                    })
+                    .buttonStyle(.plain)
+                    if store.isProUnlocked {
+                        NavigationLink {
+                            SupporterView()
+                        } label: {
+                            ThemedLabel("Support Apneue", systemImage: "heart", themeIndex: themeIndex)
+                        }
+                    }
                     NavigationLink {
-                        AboutView()
+                        AboutView(themeIndex: themeIndex)
                     } label: {
-                        Label("About", systemImage: "app.translucent")
+                        ThemedLabel("About", systemImage: "app.translucent", themeIndex: themeIndex)
                     }
                 }
             }
-            .fontDesign(.rounded)
-            .scrollContentBackground(.hidden)
-            .background(Color.accentColor.opacity(0.08))
             .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -156,6 +198,59 @@ struct SettingsView: View {
                     }
                 }
             }
+            //            .tint(K.colorThemes[themeIndex].accentColor)
+        }
+    }
+}
+
+struct ThemedLabel<Title: View, Icon: View>: View {
+    
+    let themeIndex: Int
+    @ViewBuilder let title: () -> Title
+    @ViewBuilder let icon: () -> Icon
+    
+    init(
+        themeIndex: Int,
+        @ViewBuilder title: @escaping () -> Title,
+        @ViewBuilder icon: @escaping () -> Icon
+    ) {
+        self.themeIndex = themeIndex
+        self.title = title
+        self.icon = icon
+    }
+    
+    init(
+        _ text: String,
+        systemImage: String,
+        themeIndex: Int
+    ) where Title == Text, Icon == Image {
+        self.themeIndex = themeIndex
+        self.title = { Text(text) }
+        self.icon = {
+            Image(systemName: systemImage)
+        }
+    }
+    
+    var body: some View {
+        Label {
+            title()
+        } icon: {
+            icon()
+                .font(.footnote)
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(
+                    LinearGradient(
+                        colors: [
+                            K.colorThemes[themeIndex].accentColor.darker(by: -10),
+                            K.colorThemes[themeIndex].accentColor
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            
         }
     }
 }
@@ -166,16 +261,18 @@ struct SettingsView: View {
         
         @State var isShowingSheet = true
         @State var colorThemeIndex = 0
+        @State var hapticsEnabled = true
         
         var body: some View {
-//            VStack {
-//                K.colorThemes[colorThemeIndex].backgroundColors[0]
-//                    .ignoresSafeArea()
-//            }
-//            .sheet(isPresented: $isShowingSheet) {
-                SettingsView(themeIndex: $colorThemeIndex)
-                    .tint(K.colorThemes[colorThemeIndex].accentColor)
-//            }
+            //            VStack {
+            //                K.colorThemes[colorThemeIndex].backgroundColors[0]
+            //                    .ignoresSafeArea()
+            //            }
+            //            .sheet(isPresented: $isShowingSheet) {
+            SettingsView()
+                .tint(K.colorThemes[colorThemeIndex].accentColor)
+                .environmentObject(StoreManager())
+            //            }
         }
     }
     

@@ -29,19 +29,6 @@ struct RemindersSettingsView: View {
     
     @State var isConfirmationDialogPresented: Bool = false
     
-    var authorizationString: String {
-        switch authorizationStatus {
-        case .notDetermined:
-            "Not Determined"
-        case .denied:
-            "Denied"
-        case .authorized, .provisional, .ephemeral:
-            "Authorized"
-        @unknown default:
-            "Unknown"
-        }
-    }
-    
     let notificationMessages: [String] = [
         "Boost your lung capacity with today’s session.",
         "Take a deep breath—today’s session awaits.",
@@ -53,8 +40,10 @@ struct RemindersSettingsView: View {
         "Your next session starts now."
     ]
     
+    @State var themeIndex: Int
+    
     var body: some View {
-        List {
+        ThemedList(themeIndex: themeIndex) {
             Section {
                 HStack {
                     Text("Authorization Status")
@@ -111,9 +100,7 @@ struct RemindersSettingsView: View {
                     .onChange(of: enableReminders) { _, newValue in
                         if newValue {
                             notificationCenter.requestAuthorization(options: [.alert, .badge, .sound]) { success, error in
-                                if success {
-                                    print("Notifications enabled.")
-                                } else if let error {
+                                if let error {
                                     print(error.localizedDescription)
                                 }
                             }
@@ -170,7 +157,7 @@ struct RemindersSettingsView: View {
         .navigationTitle("Reminders")
         .sheet(isPresented: $isShowingCreateReminder) {
             NavigationStack {
-                List {
+                ThemedList(themeIndex: themeIndex) {
                     DatePicker(selection: $createNewReminderDate, displayedComponents: .hourAndMinute) {}
                         .datePickerStyle(.wheel)
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -193,9 +180,7 @@ struct RemindersSettingsView: View {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Save", systemImage: "checkmark", role: .confirm) {
                             Task {
-                                if await createReminder(date: createNewReminderDate) {
-                                    print("New reminder created.")
-                                }
+                                _ = await createReminder(date: createNewReminderDate)
                                 isShowingCreateReminder = false
                             }
                         }
@@ -206,8 +191,6 @@ struct RemindersSettingsView: View {
                         }
                     }
                 }
-                .scrollContentBackground(.hidden)
-                .background(Color.accentColor.opacity(0.08))
             }
             .presentationDetents([.fraction(0.5)])
         }
@@ -239,8 +222,6 @@ struct RemindersSettingsView: View {
             }
         }
         .navigationBarBackButtonHidden(editMode?.wrappedValue.isEditing == true)
-        .scrollContentBackground(.hidden)
-        .background(Color.accentColor.opacity(0.08))
         .onAppear {
             loadNotifications()
             updateAuthorizationStatus()
@@ -318,8 +299,6 @@ struct RemindersSettingsView: View {
             }
         }
         
-        print(identifier)
-        
         // Configuring the content.
         let content = UNMutableNotificationContent()
         content.title = "Time to Train"
@@ -340,7 +319,6 @@ struct RemindersSettingsView: View {
         do {
             try await notificationCenter.add(request)
             scheduledNotifications = await notificationCenter.pendingNotificationRequests()
-            print("Notification scheduled.")
             return true
         } catch {
             print(error)
@@ -351,6 +329,6 @@ struct RemindersSettingsView: View {
 
 #Preview {
     NavigationStack {
-        RemindersSettingsView()
+        RemindersSettingsView(themeIndex: 0)
     }
 }

@@ -14,6 +14,8 @@ struct BoxBreathingConfigurationView: View {
     @AppStorage("boxBreathingDuration") var boxBreathingDuration: Double = 4
     @AppStorage("boxBreathingNumberOfRounds") var boxBreathingNumberOfRounds: Int = 8
     
+    @State var themeIndex: Int
+    
     var totalTime: TimeInterval {
         boxBreathingDuration * 4 * Double(boxBreathingNumberOfRounds)
     }
@@ -28,7 +30,7 @@ struct BoxBreathingConfigurationView: View {
     
     var body: some View {
         NavigationStack {
-            List {
+            ThemedList(themeIndex: themeIndex, isOpaque: false) {
                 Text("Box Breathing is a controlled breathing technique where you inhale, hold, exhale, and hold again, each for an equal amount of time. This exercise helps calm the nervous system, improve focus, and increase tolerance to carbon dioxide.")
                     .listRowInsets(.horizontal, 0)
                     .listRowBackground(Color.clear)
@@ -73,16 +75,12 @@ struct BoxBreathingConfigurationView: View {
                 }
             }
             .navigationTitle("Box Breathing")
-//            .navigationBarTitleDisplayMode(.inline)
             .listRowSpacing(10)
-            .scrollContentBackground(.hidden)
-            .background(Color.accentColor.opacity(0.08))
-            .fontDesign(.rounded)
         }
     }
     
 }
 
 #Preview {
-    BoxBreathingConfigurationView()
+    BoxBreathingConfigurationView(themeIndex: 0)
 }

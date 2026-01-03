@@ -6,13 +6,27 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct CO2TableConfigurationView: View {
     
     @Environment(\.dismiss) var dismiss
     @Namespace private var namespace
     
-    let maxHoldDuration = UserDefaults.standard.object(forKey: "maxHoldDuration") as! TimeInterval
+    private static var maxHoldDescriptor: FetchDescriptor<Entry> = {
+        var descriptor = FetchDescriptor<Entry>(
+            predicate: #Predicate { $0.mode == "Max Hold" },
+            sortBy: [SortDescriptor(\.duration, order: .reverse)]
+        )
+        descriptor.fetchLimit = 1
+        return descriptor
+    }()
+    
+    @Query(Self.maxHoldDescriptor) var maxHoldEntry: [Entry]
+    
+    var maxHoldDuration: TimeInterval {
+        maxHoldEntry.first?.duration ?? 0
+    }
     
     @State private var isRotated = false
     
@@ -34,9 +48,11 @@ struct CO2TableConfigurationView: View {
     
     @State var isShowingPreviewSheet = false
     
+    @State var themeIndex: Int
+    
     var body: some View {
         NavigationStack {
-            List {
+            ThemedList(themeIndex: themeIndex, isOpaque: false) {
                 Text("CO₂ Tables are designed to increase your tolerance to elevated carbon dioxide levels. Each round includes a fixed breath-hold time followed by progressively shorter rest periods. This trains your body to remain calm and efficient as CO₂ builds up.")
                     .listRowInsets(.horizontal, 0)
                     .listRowBackground(Color.clear)
@@ -96,13 +112,9 @@ struct CO2TableConfigurationView: View {
             }
             .navigationTitle("CO₂ Table")
             .listRowSpacing(10)
-            .scrollContentBackground(.hidden)
-            .background(Color.accentColor.opacity(0.08))
-            .fontDesign(.rounded)
             .sheet(isPresented: $isShowingPreviewSheet) {
-                TablePreviewView(numberOfRounds: tableConfiguration.numberOfRounds, restTimes: tableConfiguration.restTimes, holdTimes: tableConfiguration.holdTimes)
-                .presentationDetents([.fraction(0.8), .large])
-                .fontDesign(.rounded)
+                TablePreviewView(numberOfRounds: tableConfiguration.numberOfRounds, restTimes: tableConfiguration.restTimes, holdTimes: tableConfiguration.holdTimes, themeIndex: themeIndex)
+                .presentationDetents([.fraction(0.8)])
                 .navigationTransition(.zoom(sourceID: "previewSheet", in: namespace))
             }
         }
@@ -117,9 +129,11 @@ struct TablePreviewView: View {
     var restTimes: [TimeInterval]
     var holdTimes: [TimeInterval]
     
+    @State var themeIndex: Int
+    
     var body: some View {
         NavigationStack {
-            List {
+            ThemedList(themeIndex: themeIndex, isOpaque: false) {
                 Section {
                     HStack {
                         Text("ROUND")
@@ -159,8 +173,7 @@ struct TablePreviewView: View {
                     }
             }
             .navigationTitle("Table Preview")
-            .scrollContentBackground(.hidden)
-            .background(Color.accentColor.opacity(0.08))
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done", systemImage: "checkmark", role: .close) {
@@ -227,7 +240,6 @@ struct CustomTickerView: View {
     var body: some View {
         HStack {
             Button {
-                print(value, stepSize)
                 value -= stepSize
                 value = round(value * 100) / 100.0
             } label: {
@@ -261,5 +273,5 @@ struct CustomTickerView: View {
 }
 
 #Preview {
-    CO2TableConfigurationView()
+    CO2TableConfigurationView(themeIndex: 0)
 }
