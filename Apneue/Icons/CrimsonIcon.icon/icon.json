@@ -1,17 +1,27 @@
 {
   "fill" : {
     "linear-gradient" : [
-      "srgb:0.50000,0.06511,0.07236,1.00000",
-      "srgb:0.58824,0.00000,0.00000,1.00000"
-    ]
+      "display-p3:0.92920,0.44019,0.42529,1.00000",
+      "display-p3:1.00450,0.59373,0.58122,1.00000"
+    ],
+    "orientation" : {
+      "start" : {
+        "x" : 0.5,
+        "y" : 0
+      },
+      "stop" : {
+        "x" : 0.5,
+        "y" : 0.7
+      }
+    }
   },
   "groups" : [
     {
       "blur-material" : null,
       "layers" : [
         {
-          "image-name" : "4 – Layer 2.svg",
-          "name" : "4 – Layer 2",
+          "image-name" : "4 – Layer.svg",
+          "name" : "4 – Layer",
           "position" : {
             "scale" : 1,
             "translation-in-points" : [
@@ -34,14 +44,14 @@
       },
       "translucency" : {
         "enabled" : true,
-        "value" : 1
+        "value" : 0.5
       }
     },
     {
       "layers" : [
         {
-          "image-name" : "3 – Layer 2.svg",
-          "name" : "3 – Layer 2"
+          "image-name" : "3 – Layer.svg",
+          "name" : "3 – Layer"
         }
       ],
       "position" : {
@@ -57,14 +67,14 @@
       },
       "translucency" : {
         "enabled" : true,
-        "value" : 1
+        "value" : 0.5
       }
     },
     {
       "layers" : [
         {
-          "image-name" : "2 – Layer 2.svg",
-          "name" : "2 – Layer 2"
+          "image-name" : "2 – Layer.svg",
+          "name" : "2 – Layer"
         }
       ],
       "position" : {
@@ -80,14 +90,14 @@
       },
       "translucency" : {
         "enabled" : true,
-        "value" : 1
+        "value" : 0.5
       }
     },
     {
       "layers" : [
         {
-          "image-name" : "1 – Layer 2.svg",
-          "name" : "1 – Layer 2"
+          "image-name" : "1 – Layer.svg",
+          "name" : "1 – Layer"
         }
       ],
       "position" : {
@@ -102,7 +112,7 @@
         "opacity" : 0.5
       },
       "translucency" : {
-        "enabled" : false,
+        "enabled" : true,
         "value" : 0.5
       }
     }

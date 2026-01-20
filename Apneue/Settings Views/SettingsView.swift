@@ -50,8 +50,8 @@ struct SettingsView: View {
                                 .background(
                                     LinearGradient(
                                         colors: [
-                                            Color.pink.darker(by: -10),
-                                            Color.pink
+                                            Color.blue.darker(by: -10),
+                                            Color.blue
                                         ],
                                         startPoint: .top,
                                         endPoint: .bottom
@@ -69,8 +69,20 @@ struct SettingsView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
+//                    .listRowBackground(
+//                        Color.blue.saturation(0.3).brightness(colorScheme == .dark ? -0.4 : 0.5)
+//                    )
                     .listRowBackground(
-                        Color.pink.saturation(0.3).brightness(colorScheme == .dark ? -0.4 : 0.5)
+                        LinearGradient(
+                            colors: [
+                                .blue.darker(by: -20),
+                                .blue
+                        ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .saturation(1.5)
+                        .opacity(0.6)
                     )
                 }
             }
@@ -250,7 +262,6 @@ struct ThemedLabel<Title: View, Icon: View>: View {
                     )
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 10))
-            
         }
     }
 }
@@ -264,15 +275,9 @@ struct ThemedLabel<Title: View, Icon: View>: View {
         @State var hapticsEnabled = true
         
         var body: some View {
-            //            VStack {
-            //                K.colorThemes[colorThemeIndex].backgroundColors[0]
-            //                    .ignoresSafeArea()
-            //            }
-            //            .sheet(isPresented: $isShowingSheet) {
             SettingsView()
                 .tint(K.colorThemes[colorThemeIndex].accentColor)
                 .environmentObject(StoreManager())
-            //            }
         }
     }
     

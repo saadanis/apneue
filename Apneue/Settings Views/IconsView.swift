@@ -10,6 +10,7 @@ import UIKit
 
 struct IconsView: View {
     
+    @Environment(\.dismiss) var dismiss
     @AppStorage("colorThemeIndex") private var themeIndex: Int = 0
     
     @StateObject private var iconState = AppIconState()
@@ -93,21 +94,22 @@ struct IconsView: View {
         ZStack(alignment: .bottom) {
             ThemedList(themeIndex: themeIndex) {
                 iconSection("Simple", startIndex: 0, endIndex: 3)
-                iconSection("A Little Less Simple", startIndex: 3, endIndex: 6)
-                iconSection("Definitely Not Simple", startIndex: 6, endIndex: 9)
-                iconSection("Umm...", startIndex: 9, endIndex: 10)
-                Text("It must be pretty obvious by now that I'm not a designer, so I'll try to get someone to make better icons eventually.")
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .listRowBackground(Color.clear)
+                iconSection("Colorful", startIndex: 3, endIndex: 6)
+                iconSection("Varied", startIndex: 6, endIndex: 9)
+                iconSection("Bonus", startIndex: 9, endIndex: 11)
             }
             if !store.isProUnlocked {
                 UnlockMessageView(title: "Unlock All Icons", message: "Support Apneue with a small one-time fee to unlock all these fun and pretty app icons.")
             }
         }
         .navigationTitle("Icons")
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done", systemImage: "checkmark", role: .close) {
+                    dismiss()
+                }
+            }
+        }
         .alert("Error", isPresented: $showingErrorAlert) {
             
         } message: {

@@ -1,17 +1,27 @@
 {
   "fill" : {
     "linear-gradient" : [
-      "srgb:0.00392,0.72549,1.00000,1.00000",
-      "srgb:0.45490,0.80784,0.91373,1.00000"
-    ]
+      "display-p3:0.54490,0.85059,1.00000,1.00000",
+      "display-p3:1.00000,1.00000,1.00000,1.00000"
+    ],
+    "orientation" : {
+      "start" : {
+        "x" : 0.5,
+        "y" : 1
+      },
+      "stop" : {
+        "x" : 0.5,
+        "y" : 0.3
+      }
+    }
   },
   "groups" : [
     {
       "blur-material" : null,
       "layers" : [
         {
-          "image-name" : "4 – Layer.svg",
-          "name" : "4 – Layer",
+          "image-name" : "4 – Layer 2.svg",
+          "name" : "4 – Layer 2",
           "position" : {
             "scale" : 1,
             "translation-in-points" : [
@@ -41,8 +51,8 @@
       "blur-material" : 0.5,
       "layers" : [
         {
-          "image-name" : "3 – Layer.svg",
-          "name" : "3 – Layer"
+          "image-name" : "3 – Layer 2.svg",
+          "name" : "3 – Layer 2"
         }
       ],
       "position" : {
@@ -66,19 +76,35 @@
         {
           "blend-mode" : "normal",
           "glass" : true,
+          "hidden" : false,
           "image-name" : "Blahaj – Layer.svg",
           "name" : "Blahaj – Layer",
           "position" : {
             "scale" : 1,
             "translation-in-points" : [
-              -61.82065217391306,
-              14.32065217391306
+              -62.69021739130437,
+              22.146739130434867
             ]
           }
         },
         {
-          "image-name" : "2 – Layer.svg",
-          "name" : "2 – Layer"
+          "blend-mode" : "normal",
+          "fill" : "automatic",
+          "glass" : true,
+          "hidden" : true,
+          "image-name" : "Blahaj – Layer 2.svg",
+          "name" : "Blahaj – Layer 2"
+        },
+        {
+          "image-name" : "2 – Layer 2.svg",
+          "name" : "2 – Layer 2",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
         }
       ],
       "position" : {
@@ -98,19 +124,19 @@
       }
     },
     {
+      "blend-mode" : "normal",
+      "blur-material" : 0.5,
       "layers" : [
         {
           "fill" : "none",
           "hidden" : false,
+          "image-name" : "1 – Layer 2.svg",
+          "name" : "1 – Layer 2"
+        },
+        {
+          "hidden" : true,
           "image-name" : "1 – Layer.svg",
-          "name" : "1 – Layer",
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              0,
-              0
-            ]
-          }
+          "name" : "1 – Layer"
         }
       ],
       "position" : {

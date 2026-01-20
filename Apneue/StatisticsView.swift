@@ -123,6 +123,13 @@ struct StatisticsView: View {
                         }
                     }
                 }
+//                Section {
+//                    Button {
+//                        populateDemoData()
+//                    } label: {
+//                        Label("Generate Demo Data", systemImage: "wand.and.stars")
+//                    }
+//                }
             }
             .listRowSpacing(10)
             .navigationTitle("Statistics")
@@ -134,6 +141,144 @@ struct StatisticsView: View {
                 }
             }
         }
+    }
+    
+    private func populateDemoData() {
+        let calendar = Calendar.current
+        let now = Date()
+        let today = calendar.startOfDay(for: now)
+
+        // 1) Clear existing data
+        entries.forEach {
+            modelContext.delete($0)
+        }
+
+        // Helpers
+        func randomTimeOnDay(_ day: Date, hourRange: ClosedRange<Int> = 7...23) -> Date {
+            let hour = Int.random(in: hourRange)
+            let minute = Int.random(in: 0...59)
+            return calendar.date(bySettingHour: hour, minute: minute, second: Int.random(in: 0...59), of: day) ?? day
+        }
+
+        func randomDouble(_ range: ClosedRange<Double>) -> Double {
+            Double.random(in: range)
+        }
+
+        func insertSession(mode: TimerMode, duration: TimeInterval, on day: Date) {
+            let ts = randomTimeOnDay(day)
+            modelContext.insert(Entry(duration: duration, mode: mode, timestamp: ts))
+        }
+
+        // 2) Build two streaks:
+        //    - Longest streak: 17 days (in the past)
+        //    - Current streak: 14 days (ending today)
+
+        // Past longest streak (17 consecutive days)
+        // Place it far enough back so it doesn't connect to the current streak.
+        let pastStreakStart = calendar.date(byAdding: .day, value: -44, to: today)!
+        let pastStreakDays: [Date] = (0..<17).compactMap { calendar.date(byAdding: .day, value: $0, to: pastStreakStart) }
+
+        // Current streak (14 consecutive days ending today)
+        let currentStreakStart = calendar.date(byAdding: .day, value: -13, to: today)!
+        let currentStreakDays: [Date] = (0..<14).compactMap { calendar.date(byAdding: .day, value: $0, to: currentStreakStart) }
+
+        // A few extra non-streak days (older scattered sessions)
+        let extraDays: [Date] = [
+            calendar.date(byAdding: .day, value: -80, to: today)!,
+            calendar.date(byAdding: .day, value: -73, to: today)!,
+            calendar.date(byAdding: .day, value: -61, to: today)!,
+            calendar.date(byAdding: .day, value: -52, to: today)!
+        ]
+
+        // 3) Insert realistic-looking sessions
+        // Max Hold: typically 40–120s, trending slightly upward in current streak.
+        // Box Breathing: typically 3–10 min.
+        // CO₂ / O₂ Tables: typically 6–20 min.
+
+        func addRealisticSessions(for day: Date, isCurrentStreak: Bool) {
+            // Always at least one session per day to preserve streak logic.
+            let baseMode: TimerMode = [TimerMode.boxBreathing, .maxHold, .co2Table, .o2Table].randomElement() ?? .boxBreathing
+
+            switch baseMode {
+            case .maxHold:
+                insertSession(mode: .maxHold, duration: randomDouble(45...110), on: day)
+            case .boxBreathing:
+                insertSession(mode: .boxBreathing, duration: randomDouble(240...720), on: day)
+            case .co2Table:
+                insertSession(mode: .co2Table, duration: randomDouble(540...1200), on: day)
+            case .o2Table:
+                insertSession(mode: .o2Table, duration: randomDouble(540...1200), on: day)
+            }
+
+            // Add 0–2 additional sessions for realism.
+            let extraCount = Int.random(in: 0...2)
+            for _ in 0..<extraCount {
+                let mode = [TimerMode.maxHold, .boxBreathing, .co2Table, .o2Table].randomElement() ?? .boxBreathing
+
+                if mode == .maxHold {
+                    // Slight upward trend for the current streak
+                    let dayIndex = calendar.dateComponents([.day], from: currentStreakStart, to: day).day ?? 0
+                    let trendBoost = isCurrentStreak ? min(Double(dayIndex) * 1.5, 18) : 0
+                    let value = randomDouble(40...105) + trendBoost
+                    insertSession(mode: .maxHold, duration: value, on: day)
+                } else if mode == .boxBreathing {
+                    insertSession(mode: .boxBreathing, duration: randomDouble(180...780), on: day)
+                } else if mode == .co2Table {
+                    insertSession(mode: .co2Table, duration: randomDouble(480...1320), on: day)
+                } else {
+                    insertSession(mode: .o2Table, duration: randomDouble(480...1320), on: day)
+                }
+            }
+
+            // Ensure Max Hold appears regularly.
+            if Int.random(in: 0...3) == 0 {
+                let dayIndex = calendar.dateComponents([.day], from: currentStreakStart, to: day).day ?? 0
+                let trendBoost = isCurrentStreak ? min(Double(dayIndex) * 1.8, 22) : 0
+                insertSession(mode: .maxHold, duration: randomDouble(50...95) + trendBoost, on: day)
+            }
+
+            // Ensure CO₂ / O₂ tables appear occasionally.
+            if Int.random(in: 0...4) == 0 {
+                insertSession(mode: .co2Table, duration: randomDouble(600...1500), on: day)
+            }
+            if Int.random(in: 0...4) == 0 {
+                insertSession(mode: .o2Table, duration: randomDouble(600...1500), on: day)
+            }
+        }
+
+        // Past longest streak sessions
+        pastStreakDays.forEach { addRealisticSessions(for: $0, isCurrentStreak: false) }
+
+        // Current streak sessions
+        currentStreakDays.forEach { addRealisticSessions(for: $0, isCurrentStreak: true) }
+
+        // Extra scattered older sessions
+        extraDays.forEach { day in
+            // 1–2 sessions
+            let count = Int.random(in: 1...2)
+            for _ in 0..<count {
+                let mode = [TimerMode.maxHold, .boxBreathing, .co2Table, .o2Table].randomElement() ?? .boxBreathing
+                switch mode {
+                case .maxHold:
+                    insertSession(mode: .maxHold, duration: randomDouble(35...95), on: day)
+                case .boxBreathing:
+                    insertSession(mode: .boxBreathing, duration: randomDouble(180...660), on: day)
+                case .co2Table:
+                    insertSession(mode: .co2Table, duration: randomDouble(480...1260), on: day)
+                case .o2Table:
+                    insertSession(mode: .o2Table, duration: randomDouble(480...1260), on: day)
+                }
+            }
+        }
+
+        // A couple of headline-worthy max holds within the current streak (realistic PR bumps)
+        if let prDay1 = calendar.date(byAdding: .day, value: -6, to: today),
+           let prDay2 = calendar.date(byAdding: .day, value: -2, to: today) {
+            insertSession(mode: .maxHold, duration: randomDouble(95...125), on: prDay1)
+            insertSession(mode: .maxHold, duration: randomDouble(100...130), on: prDay2)
+        }
+
+        // NOTE: Current streak will be 14 days (including today). Longest streak will remain 17 days.
     }
     
     private func calculateStreak() -> (Int, Int) {
@@ -409,6 +554,7 @@ struct ListCardView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 30))
     }
+
 }
 
 #Preview {

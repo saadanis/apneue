@@ -29,7 +29,9 @@ struct AboutView: View {
             Section {
                 VStack(alignment: .leading) {
                     HStack(spacing: 15) {
-                        Image("ApneueIcon")
+                        Image(
+                            UIApplication.shared.alternateIconName ?? "ApneueIcon"
+                        )
                             .resizable()
                             .frame(width: 70, height: 70)
                             .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18))
@@ -44,13 +46,13 @@ struct AboutView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    Text("Apneue is a free tool designed for static-apnea training, offering a breath-hold timer, guided box-breathing, and guided CO₂ and O₂ table training.")
+                    Text("Apneue is a free app for static-apnea training, with a breath-hold timer, guided box breathing, and CO₂ and O₂ table sessions.")
                         .padding(.top, 4)
                 }
             }
             .listRowSeparator(.hidden)
             Section {
-                Text("Apneue is developed and maintained by one person. Feedback, complaints, suggestions, love, etc., are welcome through the channels listed below.")
+                Text("Apneue is developed and maintained by one person: me. All feedback, complaints, suggestions, love, and criticism are welcome through the channels listed below.")
                 LabelAndLinkView(labelText: "Website", labelImage: "globe", bodyText: "saadanis.com", linkText: "https://saadanis.com", themeIndex: themeIndex)
                 LabelAndLinkView(labelText: "Email", labelImage: "envelope", bodyText: "me@saadanis.com", linkText: "mailto:me@saadanis.com", themeIndex: themeIndex)
                 LabelAndLinkView(labelText: "Mastodon", labelImage: "bubbles.and.sparkles", bodyText: "@saadanis", linkText: "https://mastodon.social/@saadanis", themeIndex: themeIndex)

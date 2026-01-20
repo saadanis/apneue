@@ -17,7 +17,7 @@ struct WaterView<Primary: View, Secondary: View>: View {
     let isAnimated: Bool
     
     let primaryContent: Primary
-    let secondaryContent: Secondary?
+    let secondaryContent: (Int) -> Secondary?
     
     let initialPhases: [CGFloat] = [0.5, 2.0, 4.1, 5.8, 1.3, 3.7, 6.2, 0.9, 2.8, 5.0]
     let offsets: [CGFloat]
@@ -48,19 +48,19 @@ struct WaterView<Primary: View, Secondary: View>: View {
     
     init(
         waveColors: [Color] = K.colorThemes[0].waveColors,
-        skyColors: [Color] = K.colorThemes[0].backgroundColors,
+        skyColors: [Color] = K.colorThemes[0].backgroundColorsLight,
         offset: CGFloat = K.initialOffset,
         spacing: CGFloat = K.initialSpacing,
         numberOfWaves: Int = 4,
         isAnimated: Bool = true,
         @ViewBuilder primaryContent: () -> Primary,
-        @ViewBuilder secondaryContent: () -> Secondary? = { nil }
+        @ViewBuilder secondaryContent: @escaping (Int) -> Secondary? = { _ in nil }
     ) {
         
         self.isAnimated = isAnimated
         
         self.primaryContent = primaryContent()
-        self.secondaryContent = secondaryContent()
+        self.secondaryContent = secondaryContent
         
         var numberOfWaves = max(3, min(numberOfWaves, 10))
         
@@ -86,78 +86,139 @@ struct WaterView<Primary: View, Secondary: View>: View {
         self.skyGradient = LinearGradient(
             gradient: Gradient(colors: skyColors),
             startPoint: UnitPoint(x: 0.5, y: 0.0),
-            endPoint: UnitPoint(x: 0.5, y: 1.0)
+            endPoint: UnitPoint(x: 0.5, y: 0.6)
         )
         
         self.offset = offset
+    }
+    
+    
+    func waveParameters(index: Int, time: TimeInterval) -> (amplitude: CGFloat, frequency: CGFloat, phase: CGFloat, bobbing: CGFloat) {
+        (
+            CGFloat(10 * Double(index + 1) / Double(colors.count)),
+            2 * Double(colors.count - index) / Double(colors.count),
+            initialPhases[index] + CGFloat(time / phaseSpeeds[index] * .pi * 2),
+            isAnimated ? bobAmounts[index] * CGFloat(sin(time / bobDurations[index] * .pi * 2)) : 0
+        )
+    }
+    
+    func waveShape(index: Int, time: TimeInterval) -> WaveView {
+        let params = waveParameters(index: index, time: time)
+        return WaveView(
+            amplitude: params.amplitude,
+            frequency: params.frequency,
+            phase: params.phase
+        )
+    }
+    
+    func wave(index: Int, time: TimeInterval, midWave: Int) -> some View {
+        let params = waveParameters(index: index, time: time)
+        let color = colors[index]
+        let colorInScheme = colorScheme == .light ? color : color.darker(by: 30)
+        
+        return waveShape(index: index, time: time)
+            .fill(
+                index < midWave
+                ? LinearGradient(colors: [colorInScheme], startPoint: .top, endPoint: .bottom)
+                : LinearGradient(
+//                    colors: [colorInScheme.opacity(0.3), colorInScheme.opacity(0.8)],
+                    colors: [colorInScheme, colorInScheme.darker(by: 10)],
+                    startPoint: .center,
+                    endPoint: UnitPoint(x: 0.5, y: 0.8)
+                )
+            )
+            .saturation(colorScheme == .light ? 1 : 1.5)
+            .overlay(
+                waveShape(index: index, time: time)
+//                    .stroke(
+//                        RadialGradient(
+//                            colors: [
+//                                .white,
+//                                color.opacity(Double(index + 1) / Double(colors.count) * 0.9)
+//                            ],
+//                            center: .topLeading,
+//                            startRadius: 700,
+//                            endRadius: 1000
+//                        ),
+//                        lineWidth: 3
+//                    )
+                    .stroke(colorInScheme.darker(by: -50), lineWidth: 1)
+            )
+//            .shadow(color: index == 0 ? .clear : colorInScheme, radius: 5, x: 0, y: -1)
+            .offset(y: offset + offsets[index] + params.bobbing)
+            .frame(height: UIScreen.main.bounds.height * 1.75)
     }
     
     var body: some View {
         TimelineView(.animation) { timeline in
             let time = isAnimated ? timeline.date.timeIntervalSinceReferenceDate : 0
             let midWave = colors.count / 2
-            ZStack {
-                ForEach(colors.enumerated(), id: \.offset) { index, color in
-                    let amplitude = CGFloat(10 * Double(index + 1) / Double(colors.count))
-                    let frequency = 2 * Double(colors.count - index) / Double(colors.count)
-                    let phase = initialPhases[index] + CGFloat(time / phaseSpeeds[index] * .pi * 2)
-                    let bobbing = isAnimated ? bobAmounts[index] * CGFloat(sin(time / bobDurations[index] * .pi * 2)) : 0
-                    
-                    if index == midWave {
-                        let tilt1 = sin(phase - 0.5) * 0.02
-                        ZStack {
-                            primaryContent
-                                .rotationEffect(.radians(-tilt1))
-                                .offset(y: max(bobbing, offset + offsets[index] + bobbing) + 15)
-                            if let secondary = secondaryContent {
-                                secondary
-                                    .offset(y: max(bobbing*1.1, offset + offsets[index] + bobbing*1.1) + 20)
-                            }
-                        }
+            
+            let frontWaveMask =
+                ZStack {
+                    ForEach(midWave..<colors.count, id: \.self) { i in
+                        wave(index: i, time: time, midWave: midWave)
                     }
-                    
-                    let colorInScheme = colorScheme == .light ? color : color.darker(by: 30)
-                    
-                    WaveView(amplitude: amplitude, frequency: frequency, phase: phase)
-                        .fill(
-                            index == 0 ? LinearGradient(
-                                colors: [colorInScheme],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ) : index < midWave ? LinearGradient(
-                                colors: [colorInScheme],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ) : LinearGradient(
-                                colors: [
-                                    colorInScheme.opacity(0.3),
-                                    colorInScheme.opacity(0.8)
-                                ],
-                                startPoint: .center,
-                                endPoint: UnitPoint(x: 0.5, y: 0.8)
-                            )
-                        )
-                        .stroke(
-                            RadialGradient(
-                                colors: [.white, color.opacity(Double(index + 1) / Double(colors.count) * 0.9)], center: .topLeading, startRadius: 700, endRadius: 1000
-                            ),
-                            lineWidth: 1
-                        )
-                        .offset(y: offset + offsets[index] + bobbing)
-                        .frame(height: UIScreen.main.bounds.height * 1.75)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ignoresSafeArea()
+//                .compositingGroup()
+            
+            let topMask =
+                wave(index: 3, time: time, midWave: midWave)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .ignoresSafeArea()
+
+            
+            ZStack {
+                
+                // Waves behind the content.
+                ForEach(0..<midWave, id: \.self) { index in
+                    wave(index: index, time: time, midWave: midWave)
+                }
+                
+                
+                let contentParams = waveParameters(index: midWave, time: time)
+                let tilt = sin(contentParams.phase - 0.5) * 0.02
+                let content: (_ layer: Int) -> some View = { layer in
+                ZStack {
+                    primaryContent
+                        .rotationEffect(.radians(-tilt))
+                        .offset(y: max(contentParams.bobbing, offset + offsets[midWave] + contentParams.bobbing) + 15)
+                    if let secondary = secondaryContent(layer) {
+                        secondary
+                            .offset(y: max(contentParams.bobbing*1.1, offset + offsets[midWave] + contentParams.bobbing*1.1) + 20)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ignoresSafeArea()
+                .compositingGroup()
+            }
+                
+                content(0)
+                
+                wave(index: 2, time: time, midWave: midWave)
+                
+                content(1)
+                    .scaleEffect(1.005)
+                    .opacity(0.6)
+                    .offset(y: 2)
+                    .mask(frontWaveMask)
+                
+                wave(index: 3, time: time, midWave: midWave)
+                
+                content(2)
+                    .scaleEffect(1.01)
+                    .opacity(0.4)
+                    .offset(y: 2)
+                    .mask(topMask)
             }
             .background {
                 skyGradient
-//                    .overlay(
-//                        colorScheme == .dark
-//                        ? Color.black.opacity(0.8)
-//                        : Color.white.opacity(0.5)
-//                    )
             }
         }
-        .drawingGroup(opaque: true, colorMode: .extendedLinear)
-        .ignoresSafeArea(edges: .all)
+        .drawingGroup(opaque: false, colorMode: .extendedLinear)
+//        .ignoresSafeArea(edges: .all)
     }
 }
 
@@ -194,29 +255,21 @@ struct WaveView: Shape {
 
 #Preview {
     
-    @Environment(\.colorScheme) var colorScheme
+    let colorScheme: ColorScheme = .light
+    let index: Int = 16
     
     WaterView(
-        waveColors: K.colorThemes[0].waveColors,
-        skyColors: K.colorThemes[0].backgroundColors
+        waveColors: K.colorThemes[index].waveColors,
+        skyColors: K.colorThemes[index].backgroundColors(for: colorScheme)
     ) {
         Text("00:00")
             .font(.system(size: 120, weight: .semibold, design: .default))
             .fontDesign(.default)
             .fontWeight(.semibold)
             .fontWidth(.compressed)
-            .foregroundStyle(
-                .white.opacity(0.8)
-                .shadow(
-                    .inner(
-                        color: .white.opacity(1),
-                        radius: 2, x: 0, y: 1
-                    )
-                )
-            )
-            .foregroundStyle(.thickMaterial)
+            .foregroundStyle(.white)
         
-    } secondaryContent: {
+    } secondaryContent: { _ in
         VStack(spacing: 100) {
             Text("ROUND 1 OF 10")
                 .fontWeight(.bold)
@@ -224,7 +277,7 @@ struct WaveView: Shape {
                 .foregroundStyle(
                     colorScheme == .dark ?
                     Color.white :
-                        Color.white
+                        K.colorThemes[index].accentColor
                 )
                 .blendMode(
                     colorScheme == .dark ?
@@ -239,4 +292,5 @@ struct WaveView: Shape {
                 .frame(height: 60)
         }
     }
+    .preferredColorScheme(colorScheme)
 }

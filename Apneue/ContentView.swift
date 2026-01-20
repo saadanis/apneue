@@ -74,15 +74,9 @@ struct ThemedList<Content: View>: View {
         .scrollContentBackground(.hidden)
         .background(
             isOpaque ?
-            K.colorThemes[themeIndex]
-                .backgroundColors.first!
-                .flattened(over:
-                            colorScheme == .dark ?
-                    .gray.darker(by: 50) :
-                        .white, alpha: 0.1) :
-                K.colorThemes[themeIndex]
-                .backgroundColors.first!
-                .opacity(0.1)
+            K.backgroundColor(for: themeIndex, colorScheme: colorScheme) :
+                K.backgroundColor(for: themeIndex, colorScheme: colorScheme)
+                .opacity(0.75)
         )
     }
 }

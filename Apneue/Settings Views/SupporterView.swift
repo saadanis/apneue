@@ -13,6 +13,7 @@ struct SupporterView: View {
     @AppStorage("colorThemeIndex") private var themeIndex: Int = 0
     
     @EnvironmentObject var store: StoreManager
+    @Environment(\.colorScheme) var colorScheme
     
     let themes = K.colorThemes
     let themesCount = K.colorThemes.count
@@ -31,187 +32,185 @@ struct SupporterView: View {
         (34,  18,  2),
     ]
     
+    @ViewBuilder private func listItem(title: String, message: String, icon: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(title, systemImage: icon)
+                .font(.title3)
+                .fontWeight(.semibold)
+                .foregroundStyle(K.colorThemes[themeIndex].accentColor)
+                .symbolColorRenderingMode(.gradient)
+            Text(message)
+                .font(.subheadline)
+                .multilineTextAlignment(.leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
     var body: some View {
         ZStack(alignment: .bottom) {
-            ThemedList(themeIndex: themeIndex) {
-                VStack(spacing: 10) {
-                    HStack {
-                        
-                    }
-                    .frame(height: 110)
-                    .background {
-                        HStack {
-                            ForEach([2, 13, 12, 14, 15, 17], id: \.self) { i in
-                                RoundedRectangle(cornerRadius: 20)
-                                    .foregroundStyle(.clear)
-                                    .overlay {
-                                        WaterView(
-                                            waveColors: themes[i].waveColors,
-                                            skyColors: themes[i].backgroundColors,
-                                        ) {
-                                            EmptyView()
-                                        } secondaryContent: {
-                                            EmptyView()
-                                        }
-                                        .scaleEffect(0.4)
-                                    }
-                                    .clipShape(RoundedRectangle(cornerRadius: 20))
-                                    .frame(width: 70, height: 110)
-                            }
-                        }
-                    }
-                    .padding(.bottom)
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Unlock All Themes")
-                            .font(.title3)
-                            .fontWeight(.bold)
-                            .foregroundStyle(K.colorThemes[themeIndex].accentColor)
-                        Text("Support the developer and unlock access to all themes, including all future additions.")
-                            .font(.subheadline)
-                            .multilineTextAlignment(.leading)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                VStack(spacing: 10) {
-                    HStack {
-                        
-                    }
-                    .frame(height: 60)
-                    .background {
-                        HStack {
-                            ForEach([1, 3, 4, 5, 6, 7, 8], id: \.self) { i in
-                                Image(appIconNames[i])
-                                    .resizable()
-                                    .frame(width: 60, height: 60)
-                            }
-                        }
-                    }
-                    .padding(.bottom)
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Unlock Alternate Icons")
-                            .font(.title3)
-                            .fontWeight(.bold)
-                            .foregroundStyle(K.colorThemes[themeIndex].accentColor)
-                        Text("Unlock all alternate app icons to customize your home screen.")
-                            .font(.subheadline)
-                            .multilineTextAlignment(.leading)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                
-                VStack(spacing: 10) {
-                    HStack {
-                        
-                    }
-                    .frame(height: 45)
-                    .background {
-                        HStack(spacing: 5) {
-                            ForEach(Array(hearts.enumerated()), id: \.offset) { _, h in
-                                Image(systemName: "heart.fill")
-//                                    .font(.system(size: h.size, weight: .heavy))
-                                    .font(.system(size: h.size, weight: .semibold, design: .rounded))
-                                    .rotationEffect(.degrees(h.rotation))
-                                    .offset(y: h.yOffset)
-                                    .foregroundStyle(.pink)
-                                    .symbolColorRenderingMode(.gradient)
-                                    .shadow(color: .pink, radius: 4, x: 0, y: 0)
-                            }
-                        }
-                    }
-                    .padding(.bottom)
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Support Development")
-                            .font(.title3)
-                            .fontWeight(.bold)
-                            .foregroundStyle(.pink)
-                        Text("Support the continuous development of Apneue, and yours truly.")
-                            .font(.subheadline)
-                            .multilineTextAlignment(.leading)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .listRowSpacing(15)
-                VStack(spacing: 10) {
-                    ProductView(id: "com.saadanis.Apneue.Supporter")
-                        .productViewStyle(CustomProductStyle(themeIndex: themeIndex))
-                    HStack {
-                        Text("Already a supporter?")
-                        Button("Restore purchase.") {
-                            Task {
-                                await store.restorePurchases()
-                            }
-                        }
-                        .disabled(store.isProUnlocked)
-                    }
-                    .font(.caption)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 28)
-                .padding(.top, 30)
-                .background {
+            ScrollView {
                     Rectangle()
-                        .fill(.thinMaterial)
-                        .mask(
-                            LinearGradient(
-                                gradient: Gradient(stops: [
-                                    .init(color: .clear, location: 0.0),
-                                    .init(color: .black, location: 0.3)
-                                ]),
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .ignoresSafeArea(edges: .bottom)
+                    .overlay(alignment: .top) {
+                        VStack {
+                            HStack {
+                                ForEach([1, 2, 3, 4, 5, 6], id: \.self) { i in
+                                    SimplerThemeView(themeIndex: i, height: 120)
+                                        .frame(width: 75)
+                                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                                        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20))
+                                        .shadow(color: K.colorThemes[i].accentColor.opacity(0.3), radius: 60)
+                                        .offset(y: i%2 == 0 ? 0 : -10)
+                                }
+                            }
+                            HStack(spacing: 12) {
+                                ForEach([5, 6, 2, 7, 8], id: \.self) { i in
+                                    if i == 2 {
+                                        Text("Support Apneue")
+                                            .foregroundStyle(
+                                                colorScheme == .dark ?
+                                                    .white :
+                                                        .black
+                                            )
+                                            .font(.title2)
+                                            .fontWeight(.bold)
+                                            .frame(width: 200)
+                                            .multilineTextAlignment(.center)
+                                        
+                                    } else {
+                                        Image(appIconNames[i])
+                                            .resizable()
+                                            .frame(width: 70, height: 70)
+                                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18))
+                                            .offset(y: i%2 == 0 ? 5 : -5)
+                                    }
+                                }
+                            }
+                            .frame(height: 75)
+                            HStack {
+                                ForEach([12, 13, 14, 15, 16, 17], id: \.self) { i in
+                                    SimplerThemeView(themeIndex: i, height: 120)
+                                        .frame(width: 75)
+                                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                                        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20))
+                                        .shadow(color: K.colorThemes[i].accentColor.opacity(0.3), radius: 60)
+                                        .offset(y: i%2 == 0 ? 0 : 10)
+                                }
+                            }
+                        }
+                    }
+                        .foregroundStyle(.clear)
+                        .frame(height: 400)
+                        .ignoresSafeArea(edges: .top)
+                VStack(alignment: .leading, spacing: 20) {
+                    listItem(
+                        title: "Unlock All Themes",
+                        message: "Make Apneue feel truly yours with over fifteen fun and colorful themes.", icon: "1.circle.fill"
+                    )
+                    listItem(
+                        title: "Unlock Alternate Icons",
+                        message: "Switch up your app icon and match whatever vibe your homescreen is in.", icon: "2.circle.fill"
+                    )
+                    listItem(
+                        title: "Support Development",
+                        message: "Support Apneue’s continued development and the lone lost soul behind it.",
+                        icon: "3.circle.fill"
+                    )
                 }
+                .padding(.horizontal, 28)
+                VStack {
+                    
+                }
+                .frame(height: 80)
+                
+            }
+            .scrollIndicators(.hidden)
+            .ignoresSafeArea(edges: .top)
+            VStack(spacing: 10) {
+                if store.isProUnlocked {
+                    Button { } label: {
+                        HStack {
+                            Text("Thanks for supporting Apneue.")
+                                .fontWeight(.semibold)
+                        }
+                        .padding(7)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.glassProminent)
+                    .disabled(true)
+                } else if let product = store.product {
+                    Button {
+                        Task { _ = await store.buy() }
+                    } label: {
+                        HStack {
+                            if store.isPurchasing {
+                                ProgressView()
+                            } else {
+                                Text("One-Time Purchase").font(.callout)
+                            }
+                            if !store.isPurchasing {
+                                Spacer()
+                                Text(verbatim: product.displayPrice)
+                                    .fontWeight(.semibold)
+                            }
+                        }
+                        .padding(7)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.glassProminent)
+                    .disabled(store.isPurchasing)
+
+                } else {
+                    ProgressView()
+                        .padding(7)
+                        .frame(maxWidth: .infinity)
+                }
+                HStack {
+                    Text("Already a supporter?")
+                    Button {
+                        Task {
+                            await store.restorePurchases()
+                        }
+                    } label: {
+                        if store.isRestoring {
+                            HStack(spacing: 4) {
+                                ProgressView().scaleEffect(0.7)
+                                Text("Restoring…")
+                            }
+                        } else {
+                            Text("Restore purchase.")
+                        }
+                    }
+                    .disabled(store.isProUnlocked || store.isRestoring)
+                }
+                .font(.caption)
+                .frame(height: 23)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 28)
+            .padding(.top, 30)
+            .background {
+                Rectangle()
+                    .fill(.thinMaterial)
+                    .fill(K.backgroundColor(for: themeIndex, colorScheme: colorScheme))
+                    .mask(
+                        LinearGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: .clear, location: 0.0),
+                                .init(color: .black, location: 0.3)
+                            ]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .ignoresSafeArea(edges: .bottom)
+            }
         }
-        .navigationTitle("Support Apneue")
-        .navigationBarTitleDisplayMode(.inline)
+        .background(K.backgroundColor(for: themeIndex, colorScheme: colorScheme))
+        .toolbarBackground(.visible, for: .navigationBar)
+//        .navigationTitle("Support Apneue")
+//        .navigationBarTitleDisplayMode(.inline)
         .task {
             await store.refreshEntitlements()
-        }
-    }
-}
-
-struct CustomProductStyle: ProductViewStyle {
-    
-    @State var themeIndex: Int
-    @EnvironmentObject var store: StoreManager
-    
-    func makeBody(configuration: Configuration) -> some View {
-        switch configuration.state {
-        case .loading:
-            ProgressView()
-                .padding(7)
-                .frame(maxWidth: .infinity)
-        case .success(let product):
-            Button {
-                configuration.purchase()
-            } label: {
-                HStack(alignment: .center) {
-                    if store.isProUnlocked {
-                        Text("Thanks for supporting Apnueue!")
-                            .fontWeight(.semibold)
-                    } else {
-                        Text("One-Time Purchase")
-                            .font(.callout)
-                        Spacer()
-                        Text(verbatim: product.displayPrice)
-                            .fontWeight(.semibold)
-                    }
-                }
-                .padding(7)
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.glassProminent)
-            .disabled(store.isProUnlocked)
-        default:
-            Text("Something went wrong.")
-                .padding(7)
-                .frame(maxWidth: .infinity)
         }
     }
 }
@@ -221,5 +220,12 @@ struct CustomProductStyle: ProductViewStyle {
         SupporterView()
             .tint(.blue)
             .environmentObject(StoreManager())
+            .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    Button("Back", systemImage: "heart.fill") {
+                        
+                    }
+                }
+            }
     }
 }

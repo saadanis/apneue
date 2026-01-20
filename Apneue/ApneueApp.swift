@@ -53,7 +53,6 @@ struct ApneueApp: App {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
         
         if lastHandledVersion != currentVersion {
-            colorThemeIndex = 0
             lastHandledVersion = currentVersion
         }
     }
@@ -76,6 +75,20 @@ struct ApneueApp: App {
             ContentView()
                 .tint(K.colorThemes[colorThemeIndex].accentColor)
                 .environmentObject(store)
+                .task {
+                    await store.refreshEntitlements()
+                    
+                    if !store.isProUnlocked {
+                        colorThemeIndex = 0
+                        if UIApplication.shared.supportsAlternateIcons {
+                            UIApplication.shared.setAlternateIconName(nil) { error in
+                                if let error = error {
+                                    print("Error restoring to original icon: \(error)")
+                                }
+                            }
+                        }
+                    }
+                }
         }
         .modelContainer(sharedModelContainer)
     }
@@ -127,6 +140,8 @@ final class StoreManager: ObservableObject {
     
     @Published private(set) var product: Product?
     @Published private(set) var isProUnlocked: Bool = false
+    @Published private(set) var isPurchasing: Bool = false
+    @Published private(set) var isRestoring: Bool = false
     
     private var updatesTask: Task<Void, Never>?
     
@@ -154,6 +169,11 @@ final class StoreManager: ObservableObject {
     func buy() async -> Bool {
         guard let product else { return false }
         
+        isPurchasing = true
+        defer {
+            isPurchasing = false
+        }
+        
         do {
             let result = try await product.purchase()
             switch result {
@@ -175,8 +195,15 @@ final class StoreManager: ObservableObject {
     }
     
     func restorePurchases() async {
-        // StoreKit2 restore is typically: sync + entitlement refresh
-        do { try await AppStore.sync() } catch { }
+        isRestoring = true
+        defer {
+            isRestoring = false
+        }
+        
+        do {
+            try await AppStore.sync()
+        } catch { }
+        
         await refreshEntitlements()
     }
     
@@ -228,6 +255,11 @@ enum StoreKitError: Error {
 struct ColorTheme {
     let name: String
     let accentColor: Color
-    let backgroundColors: [Color]
+    let backgroundColorsLight: [Color]
+    let backgroundColorsDark: [Color]
     let waveColors: [Color]
+    
+    func backgroundColors(for scheme: ColorScheme) -> [Color] {
+        scheme == .dark ? backgroundColorsDark : backgroundColorsLight
+    }
 }

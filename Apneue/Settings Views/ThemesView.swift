@@ -7,9 +7,55 @@
 
 import SwiftUI
 
+struct SimplerThemeView: View {
+    
+    @Environment(\.colorScheme) var colorScheme
+    var themeIndex: Int = 0
+    var height: CGFloat = 180
+    
+    var waveColors: [Color] {
+        if K.colorThemes[themeIndex].waveColors.count >= 4 {
+            return K.colorThemes[themeIndex].waveColors
+        }
+        return K.interpolateColors(
+            colorA: K.colorThemes[themeIndex].waveColors[0],
+            colorB: K.colorThemes[themeIndex].waveColors[1],
+            steps: 2
+        )
+    }
+    
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Rectangle()
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: K.colorThemes[themeIndex].backgroundColors(for: colorScheme),
+                        startPoint: UnitPoint(x: 0.5, y: -1),
+                        endPoint: UnitPoint(x: 0.5, y: 1)
+                    )
+                )
+            ForEach(0..<4, id: \.self) { i in
+                let waveColor = colorScheme == .light ? waveColors[i] : waveColors[i].darker(by: 30)
+                Rectangle()
+                    .foregroundStyle(waveColor)
+                    .saturation(colorScheme == .light ? 1 : 1.5)
+                    .shadow(color: waveColor.darker(by: -50), radius: 0, x: 0, y: -1)
+                    .frame(height: CGFloat(
+                        height - height/2.3 - CGFloat(9*i)
+                    ))
+                    .offset(y: 2)
+                
+            }
+        }
+        .frame(height: height)
+    }
+}
+
 struct ThemesView: View {
     
     @Environment(\.dismiss) var dismiss
+    @Environment(\.colorScheme) var colorScheme
+    
     @AppStorage("colorThemeIndex") private var themeIndex: Int = 0
     @EnvironmentObject var store: StoreManager
     
@@ -34,30 +80,26 @@ struct ThemesView: View {
                             themeIndex = i
                         } label: {
                             ZStack(alignment: .bottom) {
-                                RoundedRectangle(cornerRadius: 20)
-                                    .foregroundStyle(.clear)
-                                    .overlay {
-                                        WaterView(
-                                            waveColors: themes[i].waveColors,
-                                            skyColors: themes[i].backgroundColors,
-                                            isAnimated: themeIndex == i
-                                        ) {
-                                            EmptyView()
-                                        } secondaryContent: {
-                                            EmptyView()
+                                if themeIndex == i {
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .foregroundStyle(.clear)
+                                        .overlay {
+                                            WaterView(
+                                                waveColors: themes[i].waveColors,
+                                                skyColors: themes[i].backgroundColors(for: colorScheme),
+                                                isAnimated: themeIndex == i
+                                            ) {
+                                                EmptyView()
+                                            } secondaryContent: { _ in
+                                                EmptyView()
+                                            }
+                                            .scaleEffect(0.5)
+                                            .frame(width: 450)
+                                            
                                         }
-                                        .scaleEffect(0.4)
-                                    }
-                                    .overlay {
-                                        if themeIndex == i {
-                                            RoundedRectangle(cornerRadius: 20)
-                                                .stroke(
-                                                    themes[i].accentColor,
-                                                    lineWidth: 6
-                                                )
-                                        }
-                                    }
-                                    .frame(height: 180)
+                                } else {
+                                    SimplerThemeView(themeIndex: i)
+                                }
                                 Text(themes[i].name)
                                     .foregroundStyle(themes[i].accentColor)
                                     .font(.caption)
@@ -68,17 +110,28 @@ struct ThemesView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 20))
                                     .padding(10)
                             }
+                            .overlay {
+                                if themeIndex == i {
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .stroke(
+                                            themes[i].accentColor,
+                                            lineWidth: 6
+                                        )
+                                }
+                            }
                             .clipShape(RoundedRectangle(cornerRadius: 20))
                             .contentShape(RoundedRectangle(cornerRadius: 20))
-                            //                            .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 20))
+                            .frame(height: 180)
                         }
                         .buttonStyle(.plain)
                         .disabled(!isThemeAvailable(i))
+                        .opacity(isThemeAvailable(i) ? 1 : 0.9)
+                        .saturation(isThemeAvailable(i) ? 1 : 0.5)
+
                     }
                 }
             }
         } else {
-            // No-op if indices are invalid
             EmptyView()
         }
     }
@@ -90,28 +143,9 @@ struct ThemesView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             ThemedList(themeIndex: themeIndex) {
-                //            Section {
-                //                if !store.isProUnlocked {
-                //                    NavigationLink(destination: {
-                //                        SupporterView()
-                //                    }, label: {
-                //                        VStack {
-                //                            Text("Unlock All Themes")
-                //                                .font(.headline)
-                //                            Text("Become a supporter to unlock all these awesome themes!")
-                //                                .multilineTextAlignment(.center)
-                //                                .font(.subheadline)
-                //                                .foregroundStyle(.secondary)
-                //                        }
-                //                        .frame(maxWidth: .infinity, alignment: . center)
-                //                        .padding(.vertical)
-                //                    })
-                //                    .navigationLinkIndicatorVisibility(.hidden)
-                //                }
-                //            }
                 themeSection("Simple", startIndex: 0, endIndex: 6)
-                themeSection("A Little Less Simple", startIndex: 6, endIndex: 12)
-                themeSection("Definitely Not Simple", startIndex: 12, endIndex: 18)
+                themeSection("Colorful", startIndex: 6, endIndex: 12)
+                themeSection("Varied", startIndex: 12, endIndex: 18)
             }
             if !store.isProUnlocked {
                 UnlockMessageView(title: "Unlock All Themes", message: "Support Apneue with a small one-time fee to unlock all these fun and pretty themes.")
@@ -129,6 +163,8 @@ struct ThemesView: View {
 }
 
 struct UnlockMessageView: View {
+    
+    @Environment(\.colorScheme) var colorScheme
     
     let title: String
     let message: String
@@ -158,6 +194,7 @@ struct UnlockMessageView: View {
         .background {
             Rectangle()
                 .fill(.thinMaterial)
+                .fill(K.backgroundColor(for: 0, colorScheme: colorScheme))
                 .mask(
                     LinearGradient(
                         gradient: Gradient(stops: [

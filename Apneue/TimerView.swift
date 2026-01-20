@@ -334,7 +334,7 @@ struct TimerView: View {
         .background {
             WaterView (
                 waveColors: K.colorThemes[colorThemeIndex].waveColors,
-                skyColors: K.colorThemes[colorThemeIndex].backgroundColors,
+                skyColors: K.colorThemes[colorThemeIndex].backgroundColors(for: colorScheme),
                 offset: waveOffset,
                 spacing: waveSpacing,
                 numberOfWaves: 4
@@ -345,28 +345,26 @@ struct TimerView: View {
                         .fontDesign(.default)
                         .fontWeight(.semibold)
                         .fontWidth(.compressed)
-                        .foregroundStyle(
-                            .white.opacity(0.8)
-                            .shadow(
-                                .inner(
-                                    color: .white.opacity(1),
-                                    radius: 2, x: 0, y: 1
-                                )
-                            )
-                        )
-                        .foregroundStyle(.thickMaterial)
+                        .foregroundStyle(.white)
                 }
                 
-            } secondaryContent: {
+            } secondaryContent: { maskValue in
+                
+                var foregroundColor: Color {
+                    if colorScheme == .dark {
+                        return .white
+                    }
+                    if maskValue == 0 {
+                        return K.colorThemes[colorThemeIndex].accentColor
+                    }
+                    return .white
+                }
+                
                 VStack(spacing: 100) {
                     HStack {
                         Text(timerMode == .maxHold ? " " : "ROUND \(currentRound) OF \(numberOfRounds)")
                             .fontWeight(.bold)
-                            .foregroundStyle(
-                                colorScheme == .dark ?
-                                Color.white :
-                                    Color.white
-                            )
+                            .foregroundStyle(foregroundColor)
                             .blendMode(
                                 colorScheme == .dark ?
                                     .lighten :
@@ -430,9 +428,7 @@ struct TimerView: View {
         })
         .onAppear {
             
-//            TODO: FIXXXXX.
-//            if !onboardingComplete {
-            if true {
+            if !onboardingComplete {
                 isShowingOnboardingSheet = true
             }
             
