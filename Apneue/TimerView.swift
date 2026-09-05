@@ -151,6 +151,7 @@ struct TimerView: View {
     @State private var isShowingSettingsSheet: Bool = false
     @State private var isShowingConfigurationSheet: Bool = false
     @State private var isShowingOnboardingSheet: Bool = false
+    @State private var isShowingDiscardDialog: Bool = false
     
     @State private var waveOffset: CGFloat = K.initialOffset
     @State private var waveSpacing: CGFloat = K.initialSpacing
@@ -177,160 +178,34 @@ struct TimerView: View {
     }
     
     var countUp: Bool { timerMode == .maxHold }
-    
-    @State var showDiscardConfirmationDialog: Bool = false
-    
-    var body: some View {
-        VStack {
-            GlassEffectContainer {
-                HStack(alignment: .center) {
-                    if !isTimerRunning {
-                        Button {
-                            isShowingStatisticsSheet = true
-                        } label: {
-                            Image(systemName: "chart.xyaxis.line")
-                                .font(.title3)
-                            //                            .foregroundStyle(.white)
-                                .frame(width: 20, height: 30)
-                                .matchedTransitionSource(id: "statisticsSheet", in: namespace)
-                        }
-                        .buttonBorderShape(.circle)
-                        .buttonStyle(.glass(.clear))
-                        .glassEffectTransition(.matchedGeometry)
-                    }
-                    Spacer()
-                    VStack {
-                        Text(timerMode.rawValue)
-                            .font(.headline)
-                        
-                        var subtitle: String {
-                            switch timerMode {
-                            case .maxHold:
-                                return "Personal Best \(maxHoldDuration.formattedTime)"
-                            case .boxBreathing:
-                                let duration = Int(boxBreathingDuration)
-                                return "\(duration)→\(duration)→\(duration)→\(duration) (×\(boxBreathingNumberOfRounds))"
-                            case .co2Table:
-                                let initialRest = co2RestStartingDuration.formattedTime
-                                let lastRest = co2RestEndingDuration.formattedTime
-                                let hold = (co2HoldPercentage * maxHoldDuration).formattedTime
-                                return "\(initialRest)→\(lastRest) & \(hold)"
-                            case .o2Table:
-                                let rest = o2RestDuration.formattedTime
-                                let initialHold = (Double(maxHoldDuration)*o2HoldStartingPercentage).formattedTime
-                                let finalHold = (Double(maxHoldDuration)*o2HoldEndingPercentage).formattedTime
-                                return "\(rest) & \(initialHold)→\(finalHold)"
-                            }
-                        }
-                        
-                        Text(subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(height: 45)
-                    Spacer()
-                    if !isTimerRunning {
-                        Button {
-                            isShowingSettingsSheet = true
-                        } label: {
-                            Image(systemName: "gearshape")
-                                .font(.title3)
-                                .frame(width: 20, height: 30)
-                                .matchedTransitionSource(id: "settingsSheet", in: namespace)
-                        }
-                        .buttonBorderShape(.circle)
-                        .buttonStyle(.glass(.clear))
-                        .glassEffectTransition(.matchedGeometry)
-                    }
-                }
-                .transition(.opacity)
-                .animation(.easeInOut(duration: 0.3), value: isTimerRunning)
-            }
-            Spacer()
-            HStack {
-                if isTimerRunning {
-                    Button {
-                        stop()
-                        reset()
-                    } label: {
-                        Image(systemName: "trash")
-                            .contentTransition(.symbolEffect(.replace.magic(fallback: .downUp.byLayer), options: .nonRepeating))
-                            .font(.title3)
-                            .foregroundStyle(.white)
-                            .frame(width: 20, height: 30)
-                    }
-                    .buttonBorderShape(.circle)
-                    .buttonStyle(.glass(.clear))
-                } else {
-                    Menu {
-                        ForEach(TimerMode.allCases , id:\.self) { mode in
-                            Button {
-                                timerMode = mode
-                                UserDefaults.standard.set(mode.rawValue, forKey: "lastUsedMode")
-                            } label: {
-                                Label(mode.rawValue, systemImage: getSymbolForMode(mode))
-                                if [.co2Table, .o2Table].contains(mode) && maxHoldDuration < 1 {
-                                    Text("Test your max hold first to unlock this mode.")
-                                }
-                            }
-                            .disabled([.co2Table, .o2Table].contains(mode) && maxHoldDuration < 1)
-                            if mode == .boxBreathing {
-                                Divider()
-                            }
-                        }
-                    } label: {
-                        Image(systemName: getSymbolForMode(timerMode))
-                            .contentTransition(.symbolEffect(.replace.magic(fallback: .downUp.byLayer), options: .nonRepeating))
-                            .font(.title3)
-                            .foregroundStyle(.white)
-                            .frame(width: 20, height: 20)
-                    }
-                    .padding(12)
-                    .glassEffect(.clear.interactive(), in: .circle)
-                }
-                Spacer()
-                Button {
-                    if isTimerRunning {
-                        stop()
-                        save()
-                        reset()
-                    } else {
-                        start()
-                    }
-                } label: {
-                    Image(systemName: isTimerRunning ? "stop.fill" : "play.fill")
-                        .contentTransition(.symbolEffect(.replace.magic(fallback: .downUp.byLayer), options: .nonRepeating))
-                        .fontWeight(.bold)
-                        .font(.largeTitle)
-                        .foregroundStyle(.white)
-                        .frame(width: 40, height: 50)
-                }
-                .buttonBorderShape(.circle)
-                .buttonStyle(.glass(.clear))
-                Spacer()
-                Button {
-                    if isTimerRunning {
-                        hapticsEnabled.toggle()
-                    } else {
-                        isShowingConfigurationSheet = true
-                    }
-                } label: {
-                    Image(
-                        systemName: isTimerRunning ?
-                        (hapticsEnabled ? "waveform" : "waveform.slash") :
-                            (timerMode == .maxHold ? "exclamationmark.shield" : "slider.horizontal.3")
-                    )
-                    .contentTransition(.symbolEffect(.replace.magic(fallback: .downUp.byLayer), options: .nonRepeating))
-                    .font(.title3)
-                    .foregroundStyle(.white)
-                    .frame(width: 20, height: 30)
-                    .matchedTransitionSource(id: "configurationSheet", in: namespace)
-                }
-                .buttonBorderShape(.circle)
-                .buttonStyle(.glass(.clear))
-            }
+
+    private var subtitle: String {
+        switch timerMode {
+        case .maxHold:
+            return "Personal Best \(maxHoldDuration.formattedTime)"
+        case .boxBreathing:
+            let duration = Int(boxBreathingDuration)
+            return "\(duration)→\(duration)→\(duration)→\(duration) (×\(boxBreathingNumberOfRounds))"
+        case .co2Table:
+            let initialRest = co2RestStartingDuration.formattedTime
+            let lastRest = co2RestEndingDuration.formattedTime
+            let hold = (co2HoldPercentage * maxHoldDuration).formattedTime
+            return "\(initialRest)→\(lastRest) & \(hold)"
+        case .o2Table:
+            let rest = o2RestDuration.formattedTime
+            let initialHold = (Double(maxHoldDuration)*o2HoldStartingPercentage).formattedTime
+            let finalHold = (Double(maxHoldDuration)*o2HoldEndingPercentage).formattedTime
+            return "\(rest) & \(initialHold)→\(finalHold)"
         }
-        .padding(.horizontal)
+    }
+
+    var body: some View {
+        // Read once per body pass: both rebuild `timerConfiguration`, and WaterView's
+        // TimelineView calls secondaryContent three times per frame.
+        let roundText = timerMode == .maxHold ? " " : "ROUND \(currentRound) OF \(numberOfRounds)"
+        let breathStatus = currentBreathStatus
+
+        Color.clear
         .background {
             WaterView (
                 waveColors: K.colorThemes[colorThemeIndex].waveColors,
@@ -362,7 +237,7 @@ struct TimerView: View {
                 
                 VStack(spacing: 100) {
                     HStack {
-                        Text(timerMode == .maxHold ? " " : "ROUND \(currentRound) OF \(numberOfRounds)")
+                        Text(roundText)
                             .fontWeight(.bold)
                             .foregroundStyle(foregroundColor)
                             .blendMode(
@@ -376,16 +251,125 @@ struct TimerView: View {
                     }
                     .frame(height: 50)
                     HStack {
-                        Text(currentBreathStatus.rawValue)
+                        Text(breathStatus.rawValue)
                             .fontWeight(.bold)
                             .foregroundStyle(.white)
                             .textCase(.uppercase)
                             .transition(.push(from: .trailing).combined(with: .blurReplace))
-                            .id(currentBreathStatus)
+                            .id(breathStatus)
                     }
                     .frame(height: 60)
-                    .animation(.bouncy(duration: 0.8, extraBounce: 0.1), value: currentBreathStatus)
+                    .animation(.bouncy(duration: 0.8, extraBounce: 0.1), value: breathStatus)
                 }
+            }
+        }
+        .navigationTitle(timerMode.rawValue)
+        .navigationSubtitle(subtitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !isTimerRunning {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        isShowingStatisticsSheet = true
+                    } label: {
+                        Label("Statistics", systemImage: "chart.xyaxis.line")
+                            .matchedTransitionSource(id: "statisticsSheet", in: namespace)
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isShowingSettingsSheet = true
+                    } label: {
+                        Label("Settings", systemImage: "gearshape")
+                            .matchedTransitionSource(id: "settingsSheet", in: namespace)
+                    }
+                }
+            }
+
+            ToolbarItem(placement: .bottomBar) {
+                if isTimerRunning {
+                    Button {
+                        isShowingDiscardDialog = true
+                    } label: {
+                        Label("Discard", systemImage: "trash")
+                            .contentTransition(.symbolEffect(.replace.magic(fallback: .downUp.byLayer), options: .nonRepeating))
+                    }
+                    .tint(.white)
+                    // Kept on the button itself so the dialog morphs out of it.
+                    .confirmationDialog(
+                        "Discard this session?",
+                        isPresented: $isShowingDiscardDialog,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Discard", role: .destructive) {
+                            stop()
+                            reset()
+                        }
+                    }
+                } else {
+                    Menu {
+                        ForEach(TimerMode.allCases , id:\.self) { mode in
+                            Button {
+                                timerMode = mode
+                                UserDefaults.standard.set(mode.rawValue, forKey: "lastUsedMode")
+                            } label: {
+                                Label(mode.rawValue, systemImage: getSymbolForMode(mode))
+                                if [.co2Table, .o2Table].contains(mode) && maxHoldDuration < 1 {
+                                    Text("Test your max hold first to unlock this mode.")
+                                }
+                            }
+                            .disabled([.co2Table, .o2Table].contains(mode) && maxHoldDuration < 1)
+                            if mode == .boxBreathing {
+                                Divider()
+                            }
+                        }
+                    } label: {
+                        Label(timerMode.rawValue, systemImage: getSymbolForMode(timerMode))
+                            .contentTransition(.symbolEffect(.replace.magic(fallback: .downUp.byLayer), options: .nonRepeating))
+                    }
+                    .tint(.white)
+                }
+            }
+
+            ToolbarSpacer(.flexible, placement: .bottomBar)
+
+            ToolbarItem(placement: .bottomBar) {
+                Button {
+                    if isTimerRunning {
+                        stop()
+                        save()
+                        reset()
+                    } else {
+                        start()
+                    }
+                } label: {
+                    Label(
+                        isTimerRunning ? "Stop" : "Start",
+                        systemImage: isTimerRunning ? "stop.fill" : "play.fill"
+                    )
+                    .contentTransition(.symbolEffect(.replace.magic(fallback: .downUp.byLayer), options: .nonRepeating))
+                }
+                .buttonStyle(.glassProminent)
+            }
+
+            ToolbarSpacer(.flexible, placement: .bottomBar)
+
+            ToolbarItem(placement: .bottomBar) {
+                Button {
+                    if isTimerRunning {
+                        hapticsEnabled.toggle()
+                    } else {
+                        isShowingConfigurationSheet = true
+                    }
+                } label: {
+                    let (title, symbol) = isTimerRunning
+                    ? (hapticsEnabled ? ("Haptics On", "waveform") : ("Haptics Off", "waveform.slash"))
+                    : (timerMode == .maxHold ? ("Safety", "exclamationmark.shield") : ("Configure", "slider.horizontal.3"))
+                    Label(title, systemImage: symbol)
+                        .contentTransition(.symbolEffect(.replace.magic(fallback: .downUp.byLayer), options: .nonRepeating))
+                        .matchedTransitionSource(id: "configurationSheet", in: namespace)
+                }
+                .tint(.white)
             }
         }
         .sheet(
@@ -460,7 +444,7 @@ struct TimerView: View {
                 Haptics.shared.play(.rigid)
             }
         }
-        .onChange(of: currentBreathStatus) { _, newValue in
+        .onChange(of: breathStatus) { _, newValue in
             
             var animationDuration: TimeInterval = 2
             
@@ -530,6 +514,9 @@ struct TimerView: View {
     
     
     private func stop() {
+        // The dialog is hosted by the Discard button, which this call removes; clear the flag
+        // here so a session ending on its own can't strand it.
+        isShowingDiscardDialog = false
         withAnimation {
             isTimerRunning = false
         }
@@ -735,6 +722,8 @@ struct AnimatedDigit: View {
 
 #Preview {
     @Previewable @State var colorThemeIndex = 0
-    return TimerView(colorThemeIndex: $colorThemeIndex)
-        .modelContainer(for: Entry.self, inMemory: true)
+    return NavigationStack {
+        TimerView(colorThemeIndex: $colorThemeIndex)
+    }
+    .modelContainer(for: Entry.self, inMemory: true)
 }

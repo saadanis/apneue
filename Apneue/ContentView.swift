@@ -52,8 +52,10 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TimerView(colorThemeIndex: safeColorThemeIndexBinding)
-            .fontDesign(.rounded)
+        NavigationStack {
+            TimerView(colorThemeIndex: safeColorThemeIndexBinding)
+        }
+        .fontDesign(.rounded)
 //            .symbolColorRenderingMode(.gradient)
     }
 }
