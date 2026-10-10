@@ -78,3 +78,9 @@ extension Color {
         return Color(red: Double(r), green: Double(g), blue: Double(b))
     }
 }
+
+extension EnvironmentValues {
+    /// The theme actually in effect. Paid themes fall back to the default one while the
+    /// supporter unlock is inactive, so the stored preference is never overwritten.
+    @Entry var themeIndex: Int = 0
+}

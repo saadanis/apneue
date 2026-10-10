@@ -56,7 +56,8 @@ struct ThemesView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     
-    @AppStorage("colorThemeIndex") private var themeIndex: Int = 0
+    @Environment(\.themeIndex) private var themeIndex
+    @AppStorage("colorThemeIndex") private var storedThemeIndex: Int = 0
     @EnvironmentObject var store: StoreManager
     
     let themes = K.colorThemes
@@ -77,7 +78,7 @@ struct ThemesView: View {
                 LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(lower..<upper, id: \.self) { i in
                         Button {
-                            themeIndex = i
+                            storedThemeIndex = i
                         } label: {
                             ZStack(alignment: .bottom) {
                                 if themeIndex == i {
@@ -125,8 +126,18 @@ struct ThemesView: View {
                         }
                         .buttonStyle(.plain)
                         .disabled(!isThemeAvailable(i))
-                        .opacity(isThemeAvailable(i) ? 1 : 0.9)
+                        .opacity(isThemeAvailable(i) ? 1 : 0.4)
                         .saturation(isThemeAvailable(i) ? 1 : 0.5)
+                        // Applied after the dimming so the badge itself stays legible.
+                        .overlay {
+                            if !isThemeAvailable(i) {
+                                Image(systemName: "lock.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(.white)
+                                    .padding(10)
+                                    .background(.black.opacity(0.5), in: .circle)
+                            }
+                        }
 
                     }
                 }

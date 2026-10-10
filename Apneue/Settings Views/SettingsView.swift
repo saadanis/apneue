@@ -24,7 +24,7 @@ struct SettingsView: View {
     
     @Query(sort: \Entry.timestamp, order: .reverse) var entries: [Entry]
     
-    @AppStorage("colorThemeIndex") private var themeIndex: Int = 0
+    @Environment(\.themeIndex) private var themeIndex
     
     let themes = K.colorThemes
     let themesCount = K.colorThemes.count

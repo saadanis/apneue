@@ -11,7 +11,7 @@ import UIKit
 struct IconsView: View {
     
     @Environment(\.dismiss) var dismiss
-    @AppStorage("colorThemeIndex") private var themeIndex: Int = 0
+    @Environment(\.themeIndex) private var themeIndex
     
     @StateObject private var iconState = AppIconState()
     @Environment(\.scenePhase) private var scenePhase
@@ -96,7 +96,7 @@ struct IconsView: View {
                 iconSection("Simple", startIndex: 0, endIndex: 3)
                 iconSection("Colorful", startIndex: 3, endIndex: 6)
                 iconSection("Varied", startIndex: 6, endIndex: 9)
-                iconSection("Bonus", startIndex: 9, endIndex: 11)
+                iconSection("Bonus", startIndex: 9, endIndex: 10)
             }
             if !store.isProUnlocked {
                 UnlockMessageView(title: "Unlock All Icons", message: "Support Apneue with a small one-time fee to unlock all these fun and pretty app icons.")

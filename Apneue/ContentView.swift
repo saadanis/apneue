@@ -9,20 +9,6 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @AppStorage("colorThemeIndex") private var storedColorThemeIndex: Int = 0
-
-    var colorThemeIndex: Int {
-        get { min(storedColorThemeIndex, K.colorThemes.count - 1) }
-        set { storedColorThemeIndex = newValue }
-    }
-
-    var safeColorThemeIndexBinding: Binding<Int> {
-        Binding(
-            get: { colorThemeIndex },
-            set: { storedColorThemeIndex = min($0, K.colorThemes.count - 1) }
-        )
-    }
-
     init() {
         var titleFont = UIFont.preferredFont(forTextStyle: .largeTitle)
 
@@ -53,7 +39,7 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack {
-            TimerView(colorThemeIndex: safeColorThemeIndexBinding)
+            TimerView()
         }
         .fontDesign(.rounded)
 //            .symbolColorRenderingMode(.gradient)

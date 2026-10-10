@@ -10,9 +10,22 @@
 		930BEE1D2DE9BA1700DE621F /* Apneue.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Apneue.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		930BEE302DE9BA1900DE621F /* Exceptions for "Apneue" folder in "Apneue" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Apneue.storekit,
+			);
+			target = 930BEE1C2DE9BA1700DE621F /* Apneue */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		930BEE1F2DE9BA1700DE621F /* Apneue */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				930BEE302DE9BA1900DE621F /* Exceptions for "Apneue" folder in "Apneue" target */,
+			);
 			path = Apneue;
 			sourceTree = "<group>";
 		};
