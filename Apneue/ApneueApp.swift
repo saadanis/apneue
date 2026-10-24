@@ -18,7 +18,8 @@ struct ApneueApp: App {
     @AppStorage("lastHandledVersion") private var lastHandledVersion: String = ""
     
     @StateObject private var store = StoreManager()
-    
+    @Environment(\.scenePhase) private var scenePhase
+
     init() {
         UserDefaults.standard.register(defaults: [
             
@@ -84,6 +85,11 @@ struct ApneueApp: App {
                 .task {
                     await store.refreshEntitlements()
                 }
+                .task(id: scenePhase) {
+                    if scenePhase == .active {
+                        await store.resetIconIfRevoked()
+                    }
+                }
         }
         .modelContainer(sharedModelContainer)
     }
@@ -134,7 +140,7 @@ class HealthKitManager: ObservableObject {
 final class StoreManager: ObservableObject {
     
     @Published private(set) var product: Product?
-    @Published private(set) var isProUnlocked: Bool = false
+    @Published private(set) var isProUnlocked = UserDefaults.standard.bool(forKey: "isProUnlocked")
     @Published private(set) var isPurchasing: Bool = false
     @Published private(set) var isRestoring: Bool = false
     @Published private(set) var isLoadingProduct: Bool = false
@@ -222,6 +228,7 @@ final class StoreManager: ObservableObject {
         }
         
         isProUnlocked = unlocked
+        UserDefaults.standard.set(unlocked, forKey: "isProUnlocked")
     }
     
     private func listenForTransactionUpdates() {
@@ -231,18 +238,18 @@ final class StoreManager: ObservableObject {
                 guard let transaction = try? await verified(update) else { continue }
                 await transaction.finish()
                 await refreshEntitlements()
-                if transaction.revocationDate != nil && !isProUnlocked {
-                    resetAlternateAppIcon()
-                }
+                await resetIconIfRevoked()
             }
         }
     }
-    
-    /// Call only for a revoked transaction: an empty entitlement check can mean StoreKit could not check.
-    private func resetAlternateAppIcon() {
-        guard UIApplication.shared.supportsAlternateIcons,
+
+    /// Read the latest transaction, not `isProUnlocked`: an empty entitlement check can mean StoreKit could not check.
+    func resetIconIfRevoked() async {
+        guard case .verified(let transaction) = await Transaction.latest(for: K.supporterProductID),
+              transaction.revocationDate != nil,
+              UIApplication.shared.supportsAlternateIcons,
               UIApplication.shared.alternateIconName != nil else { return }
-        UIApplication.shared.setAlternateIconName(nil)
+        try? await UIApplication.shared.setAlternateIconName(nil)
     }
     
     private func verified(_ result: VerificationResult<StoreKit.Transaction>) async throws -> StoreKit.Transaction {
