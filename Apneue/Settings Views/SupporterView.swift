@@ -9,8 +9,7 @@ import SwiftUI
 import StoreKit
 
 struct SupporterView: View {
-    private struct StoreAlert: Identifiable {
-        let id = UUID()
+    private struct StoreAlert {
         let title: String
         let message: String
     }
@@ -51,6 +50,34 @@ struct SupporterView: View {
                 .multilineTextAlignment(.leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private func purchaseAlert(for outcome: PurchaseOutcome) -> StoreAlert? {
+        switch outcome {
+        case .success, .cancelled:
+            nil
+        case .pending:
+            StoreAlert(
+                title: "Purchase Pending",
+                message: "Your purchase is waiting for approval. Apneue will unlock automatically once it's approved."
+            )
+        case .failed(let error):
+            StoreAlert(title: "Purchase Unsuccessful", message: error.localizedDescription)
+        }
+    }
+    
+    private func restoreAlert(for outcome: RestoreOutcome) -> StoreAlert? {
+        switch outcome {
+        case .restored, .cancelled:
+            nil
+        case .noPurchasesFound:
+            StoreAlert(
+                title: "No Purchase Found",
+                message: "There's no Apneue supporter purchase on this Apple Account. If you bought it with a different account, sign in with that one and try again."
+            )
+        case .failed(let error):
+            StoreAlert(title: "Restore Unsuccessful", message: error.localizedDescription)
+        }
     }
     
     var body: some View {
@@ -146,27 +173,7 @@ struct SupporterView: View {
                     .disabled(true)
                 } else if let product = store.product {
                     Button {
-                        Task {
-                            switch await store.buy() {
-                            case .success, .cancelled:
-                                break
-                            case .pending:
-                                storeAlert = StoreAlert(
-                                    title: "Purchase Pending",
-                                    message: "Your purchase is waiting for approval. Apneue will unlock automatically once it's approved."
-                                )
-                            case .unavailable:
-                                storeAlert = StoreAlert(
-                                    title: "Purchase Unavailable",
-                                    message: "Couldn't reach the App Store. Please check your connection and try again."
-                                )
-                            case .failed(let error):
-                                storeAlert = StoreAlert(
-                                    title: "Purchase Unsuccessful",
-                                    message: error.localizedDescription
-                                )
-                            }
-                        }
+                        Task { storeAlert = purchaseAlert(for: await store.buy(product)) }
                     } label: {
                         HStack {
                             if store.isPurchasing {
@@ -206,22 +213,7 @@ struct SupporterView: View {
                 HStack {
                     Text("Already a supporter?")
                     Button {
-                        Task {
-                            switch await store.restorePurchases() {
-                            case .restored, .cancelled:
-                                break
-                            case .noPurchasesFound:
-                                storeAlert = StoreAlert(
-                                    title: "No Purchase Found",
-                                    message: "There's no Apneue supporter purchase on this Apple Account. If you bought it with a different account, sign in with that one and try again."
-                                )
-                            case .failed(let error):
-                                storeAlert = StoreAlert(
-                                    title: "Restore Unsuccessful",
-                                    message: error.localizedDescription
-                                )
-                            }
-                        }
+                        Task { storeAlert = restoreAlert(for: await store.restorePurchases()) }
                     } label: {
                         if store.isRestoring {
                             HStack(spacing: 4) {
@@ -272,7 +264,6 @@ struct SupporterView: View {
             isPresented: Binding(get: { storeAlert != nil }, set: { if !$0 { storeAlert = nil } }),
             presenting: storeAlert
         ) { _ in
-            Button("OK", role: .cancel) { }
         } message: { alert in
             Text(alert.message)
         }

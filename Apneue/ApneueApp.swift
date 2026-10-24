@@ -72,7 +72,7 @@ struct ApneueApp: App {
     
     private var effectiveThemeIndex: Int {
         let stored = min(max(colorThemeIndex, 0), K.colorThemes.count - 1)
-        return store.isProUnlocked ? stored : 0
+        return store.isThemeAvailable(stored) ? stored : 0
     }
     
     var body: some Scene {
@@ -144,6 +144,10 @@ final class StoreManager: ObservableObject {
         Task { await loadProduct() }
     }
     
+    func isThemeAvailable(_ index: Int) -> Bool {
+        index == 0 || isProUnlocked
+    }
+    
     func loadProduct() async {
         // The launch load and the paywall's retry can overlap; the second would otherwise
         // clear the spinner while the first is still in flight.
@@ -162,9 +166,7 @@ final class StoreManager: ObservableObject {
         }
     }
     
-    func buy() async -> PurchaseOutcome {
-        guard let product else { return .unavailable }
-        
+    func buy(_ product: Product) async -> PurchaseOutcome {
         isPurchasing = true
         defer {
             isPurchasing = false
@@ -215,14 +217,9 @@ final class StoreManager: ObservableObject {
         var unlocked = false
         
         for await result in Transaction.currentEntitlements {
-            do {
-                let transaction = try await verified(result)
-                if transaction.productID == K.supporterProductID {
-                    unlocked = true
-                    break
-                }
-            } catch {
-                // ignore unverified
+            if case .verified(let transaction) = result, transaction.productID == K.supporterProductID {
+                unlocked = true
+                break
             }
         }
         
@@ -233,15 +230,11 @@ final class StoreManager: ObservableObject {
         Task { [weak self] in
             for await update in Transaction.updates {
                 guard let self else { return }
-                do {
-                    let transaction = try await self.verified(update)
-                    await transaction.finish()
-                    await self.refreshEntitlements()
-                    if transaction.revocationDate != nil && !self.isProUnlocked {
-                        self.resetAlternateAppIcon()
-                    }
-                } catch {
-                    // Unverified: already finished by `verified(_:)`, nothing to deliver.
+                guard let transaction = try? await verified(update) else { continue }
+                await transaction.finish()
+                await refreshEntitlements()
+                if transaction.revocationDate != nil && !isProUnlocked {
+                    resetAlternateAppIcon()
                 }
             }
         }
@@ -272,7 +265,6 @@ enum PurchaseOutcome {
     case success
     case cancelled
     case pending
-    case unavailable
     case failed(Error)
 }
 

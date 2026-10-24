@@ -78,7 +78,7 @@ struct TimerView: View {
     
     
     // Color palette options.
-    @Environment(\.themeIndex) private var colorThemeIndex: Int
+    @Environment(\.themeIndex) private var colorThemeIndex
     
     var accentColor: Color {
         K.colorThemes[colorThemeIndex].accentColor
@@ -721,7 +721,7 @@ struct AnimatedDigit: View {
 }
 
 #Preview {
-    return NavigationStack {
+    NavigationStack {
         TimerView()
     }
     .modelContainer(for: Entry.self, inMemory: true)

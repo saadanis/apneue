@@ -125,12 +125,12 @@ struct ThemesView: View {
                             .frame(height: 180)
                         }
                         .buttonStyle(.plain)
-                        .disabled(!isThemeAvailable(i))
-                        .opacity(isThemeAvailable(i) ? 1 : 0.4)
-                        .saturation(isThemeAvailable(i) ? 1 : 0.5)
+                        .disabled(!store.isThemeAvailable(i))
+                        .opacity(store.isThemeAvailable(i) ? 1 : 0.4)
+                        .saturation(store.isThemeAvailable(i) ? 1 : 0.5)
                         // Applied after the dimming so the badge itself stays legible.
                         .overlay {
-                            if !isThemeAvailable(i) {
+                            if !store.isThemeAvailable(i) {
                                 Image(systemName: "lock.fill")
                                     .font(.title3)
                                     .foregroundStyle(.white)
@@ -145,10 +145,6 @@ struct ThemesView: View {
         } else {
             EmptyView()
         }
-    }
-    
-    func isThemeAvailable(_ index: Int) -> Bool {
-        index == 0 || store.isProUnlocked
     }
     
     var body: some View {
