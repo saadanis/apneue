@@ -84,21 +84,8 @@ struct ApneueApp: App {
                 .task {
                     await store.refreshEntitlements()
                 }
-                .onChange(of: store.isProUnlocked) { wasUnlocked, isUnlocked in
-                    if wasUnlocked && !isUnlocked {
-                        resetAlternateAppIcon()
-                    }
-                }
         }
         .modelContainer(sharedModelContainer)
-    }
-    
-    /// Only called on an observed revocation. A merely *failed* entitlement check must never
-    /// clear a supporter's chosen icon (issue 2).
-    private func resetAlternateAppIcon() {
-        guard UIApplication.shared.supportsAlternateIcons,
-              UIApplication.shared.alternateIconName != nil else { return }
-        UIApplication.shared.setAlternateIconName(nil)
     }
 }
 
@@ -250,11 +237,22 @@ final class StoreManager: ObservableObject {
                     let transaction = try await self.verified(update)
                     await transaction.finish()
                     await self.refreshEntitlements()
+                    if transaction.revocationDate != nil && !self.isProUnlocked {
+                        self.resetAlternateAppIcon()
+                    }
                 } catch {
                     // Unverified: already finished by `verified(_:)`, nothing to deliver.
                 }
             }
         }
+    }
+    
+    /// Only called on a transaction that carries a `revocationDate`. An entitlement check that comes
+    /// back empty can mean "could not check", so it must never clear a supporter's chosen icon.
+    private func resetAlternateAppIcon() {
+        guard UIApplication.shared.supportsAlternateIcons,
+              UIApplication.shared.alternateIconName != nil else { return }
+        UIApplication.shared.setAlternateIconName(nil)
     }
     
     /// Unverified transactions are finished before rethrowing: StoreKit otherwise re-queues them on
