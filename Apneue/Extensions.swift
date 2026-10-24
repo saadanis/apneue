@@ -80,7 +80,6 @@ extension Color {
 }
 
 extension EnvironmentValues {
-    /// The theme actually in effect. Paid themes fall back to the default one while the
-    /// supporter unlock is inactive, so the stored preference is never overwritten.
+    /// The theme after the supporter gate. Read this, not the `colorThemeIndex` key.
     @Entry var themeIndex: Int = 0
 }

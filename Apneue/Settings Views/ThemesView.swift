@@ -128,7 +128,7 @@ struct ThemesView: View {
                         .disabled(!store.isThemeAvailable(i))
                         .opacity(store.isThemeAvailable(i) ? 1 : 0.4)
                         .saturation(store.isThemeAvailable(i) ? 1 : 0.5)
-                        // Applied after the dimming so the badge itself stays legible.
+                        // Keep this after .opacity and .saturation, or they dim the badge too.
                         .overlay {
                             if !store.isThemeAvailable(i) {
                                 Image(systemName: "lock.fill")

@@ -149,8 +149,6 @@ final class StoreManager: ObservableObject {
     }
     
     func loadProduct() async {
-        // The launch load and the paywall's retry can overlap; the second would otherwise
-        // clear the spinner while the first is still in flight.
         guard !isLoadingProduct else { return }
         
         isLoadingProduct = true
@@ -240,16 +238,13 @@ final class StoreManager: ObservableObject {
         }
     }
     
-    /// Only called on a transaction that carries a `revocationDate`. An entitlement check that comes
-    /// back empty can mean "could not check", so it must never clear a supporter's chosen icon.
+    /// Call only for a revoked transaction: an empty entitlement check can mean StoreKit could not check.
     private func resetAlternateAppIcon() {
         guard UIApplication.shared.supportsAlternateIcons,
               UIApplication.shared.alternateIconName != nil else { return }
         UIApplication.shared.setAlternateIconName(nil)
     }
     
-    /// Unverified transactions are finished before rethrowing: StoreKit otherwise re-queues them on
-    /// every launch, leaving a paid user with no entitlement and no error, forever.
     private func verified(_ result: VerificationResult<StoreKit.Transaction>) async throws -> StoreKit.Transaction {
         switch result {
         case .verified(let transaction):
