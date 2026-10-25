@@ -43,8 +43,6 @@ struct StatisticsView: View {
         order: .reverse
     ) var o2Entries: [Entry]
 
-    var streak: (Int, Int) { calculateStreak() }
-
     var totalTime: TimeInterval {
         entries.map { entry in
             entry.duration
@@ -52,6 +50,8 @@ struct StatisticsView: View {
     }
     
     var body: some View {
+        let streak = calculateStreak()
+        
         NavigationStack {
             ThemedList(themeIndex: themeIndex) {
                 Section("Summary") {
@@ -284,52 +284,27 @@ struct StatisticsView: View {
     #endif
     
     private func calculateStreak() -> (Int, Int) {
+        let days = Set(entries.map(\.day))
+        guard let latestDay = days.max() else { return (0, 0) }
         
-        let calendar = Calendar.current
-        
-        let uniqueDays = Set(entries.map {
-            calendar.startOfDay(for: $0.timestamp)
-        })
-        
-        let sortedDays = uniqueDays.sorted(by: >)
-        let longestStreak = calculateLongestStreak(dates: sortedDays.reversed())
-
-        let yesterday = calendar.startOfDay(for: Date.now.addingTimeInterval(-86400))
-
-        let today = calendar.startOfDay(for: Date())
-        
-        var streak = sortedDays.contains(today) ? 1 : 0
-        
-        for i in 0..<sortedDays.count {
-            let expectedDay = calendar.date(byAdding: .day, value: -i, to: yesterday)!
-            if sortedDays.contains(expectedDay) {
-                streak += 1
-            } else {
-                break
+        var longestStreak = 0
+        for day in days where !days.contains(day - 1) {
+            var length = 1
+            while days.contains(day + length) {
+                length += 1
             }
+            longestStreak = max(longestStreak, length)
         }
         
-        return (streak, max(streak, longestStreak))
-    }
-    
-    private func calculateLongestStreak(dates: [Date]) -> Int {
-        guard !dates.isEmpty else { return 0 }
-        
-        let calendar = Calendar.current
-        var maxStreak = 1
-        var currentStreak = 1
-        
-        for i in 1..<dates.count {
-            let diff = calendar.dateComponents([.day], from: dates[i - 1], to: dates[i]).day ?? 0
-            if diff == 1 {
+        // A streak stays current until a full day passes without a session.
+        var currentStreak = 0
+        if latestDay >= Entry.day(of: .now) - 1 {
+            while days.contains(latestDay - currentStreak) {
                 currentStreak += 1
-                maxStreak = max(maxStreak, currentStreak)
-            } else if diff > 1 {
-                currentStreak = 1
             }
         }
 
-        return maxStreak
+        return (currentStreak, longestStreak)
     }
 }
 
@@ -412,7 +387,7 @@ struct LatestEntryWithChartView: View {
                     Spacer()
                     if let latestEntry = latestEntry {
                         Group {
-                            Text(latestEntry.timestamp.formatted(date: .numeric, time: .omitted))
+                            Text(latestEntry.startDate.formatted(date: .numeric, time: .omitted))
                             Image(systemName: "chevron.right")
                                 .fontWeight(.semibold)
                         }

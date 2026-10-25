@@ -15,11 +15,27 @@ final class Entry {
     var timestamp: Date = Date.now
     var duration: TimeInterval = 0
     var mode: String = TimerMode.maxHold.rawValue
+    var secondsFromGMT: Int?
     
     init(duration: TimeInterval, mode: TimerMode, timestamp: Date = Date()) {
         self.timestamp = timestamp
         self.duration = duration
         self.mode = mode.rawValue
+        self.secondsFromGMT = TimeZone.current.secondsFromGMT(for: startDate)
+    }
+    
+    var startDate: Date {
+        timestamp.addingTimeInterval(-duration)
+    }
+    
+    // Entries saved before secondsFromGMT existed use the current time zone.
+    var day: Int {
+        Entry.day(of: startDate, secondsFromGMT: secondsFromGMT)
+    }
+    
+    static func day(of date: Date, secondsFromGMT: Int? = nil) -> Int {
+        let offset = secondsFromGMT ?? TimeZone.current.secondsFromGMT(for: date)
+        return Int(floor((date.timeIntervalSinceReferenceDate + Double(offset)) / 86_400))
     }
 }
 

@@ -50,7 +50,7 @@ struct StatisticsDetailsView: View {
                             .fontWeight(.semibold)
                             .monospacedDigit()
                         Spacer()
-                        Text(entry.timestamp.formatted(date: .abbreviated, time: .shortened))
+                        Text(entry.startDate.formatted(date: .abbreviated, time: .shortened))
                     }
                 }
                 .onDelete(perform: deleteEntry)
