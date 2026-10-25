@@ -78,9 +78,7 @@ struct StatisticsView: View {
                                 themeIndex: themeIndex
                             )
                         } else {
-                            NavigationLink {
-                                StatisticsDetailsView(mode: mode, themeIndex: themeIndex)
-                            } label: {
+                            NavigationLink(value: mode) {
                                 LatestEntryWithChartView(
                                     entries: modeEntries,
                                     mode: mode,
@@ -100,6 +98,9 @@ struct StatisticsView: View {
 //                }
             }
             .listRowSpacing(10)
+            .navigationDestination(for: TimerMode.self) { mode in
+                StatisticsDetailsView(mode: mode, themeIndex: themeIndex)
+            }
             .navigationTitle("Statistics")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
