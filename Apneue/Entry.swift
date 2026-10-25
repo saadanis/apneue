@@ -10,6 +10,8 @@ import SwiftData
 
 @Model
 final class Entry {
+    #Index<Entry>([\.mode], [\.timestamp])
+    
     var timestamp: Date = Date.now
     var duration: TimeInterval = 0
     var mode: String = TimerMode.maxHold.rawValue
