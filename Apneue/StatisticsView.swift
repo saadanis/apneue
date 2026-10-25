@@ -15,7 +15,7 @@ struct StatisticsView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     
-    @AppStorage("colorThemeIndex") private var themeIndex: Int = 0
+    @Environment(\.themeIndex) private var themeIndex
     
     @Query(sort: \Entry.timestamp, order: .reverse) var entries: [Entry]
     

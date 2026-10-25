@@ -18,7 +18,8 @@ struct ApneueApp: App {
     @AppStorage("lastHandledVersion") private var lastHandledVersion: String = ""
     
     @StateObject private var store = StoreManager()
-    
+    @Environment(\.scenePhase) private var scenePhase
+
     init() {
         UserDefaults.standard.register(defaults: [
             
@@ -70,23 +71,23 @@ struct ApneueApp: App {
         }
     }()
     
+    private var effectiveThemeIndex: Int {
+        let stored = min(max(colorThemeIndex, 0), K.colorThemes.count - 1)
+        return store.isThemeAvailable(stored) ? stored : 0
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .tint(K.colorThemes[colorThemeIndex].accentColor)
+                .environment(\.themeIndex, effectiveThemeIndex)
+                .tint(K.colorThemes[effectiveThemeIndex].accentColor)
                 .environmentObject(store)
                 .task {
                     await store.refreshEntitlements()
-                    
-                    if !store.isProUnlocked {
-                        colorThemeIndex = 0
-                        if UIApplication.shared.supportsAlternateIcons {
-                            UIApplication.shared.setAlternateIconName(nil) { error in
-                                if let error = error {
-                                    print("Error restoring to original icon: \(error)")
-                                }
-                            }
-                        }
+                }
+                .task(id: scenePhase) {
+                    if scenePhase == .active {
+                        await store.resetIconIfRevoked()
                     }
                 }
         }
@@ -139,36 +140,37 @@ class HealthKitManager: ObservableObject {
 final class StoreManager: ObservableObject {
     
     @Published private(set) var product: Product?
-    @Published private(set) var isProUnlocked: Bool = false
+    @Published private(set) var isProUnlocked = UserDefaults.standard.bool(forKey: "isProUnlocked")
     @Published private(set) var isPurchasing: Bool = false
     @Published private(set) var isRestoring: Bool = false
-    
-    private var updatesTask: Task<Void, Never>?
+    @Published private(set) var isLoadingProduct: Bool = false
     
     init() {
-        updatesTask = listenForTransactionUpdates()
-        Task {
-            await loadProduct()
-            await refreshEntitlements()
-        }
+        listenForTransactionUpdates()
+        Task { await loadProduct() }
     }
     
-    deinit {
-        updatesTask?.cancel()
+    func isThemeAvailable(_ index: Int) -> Bool {
+        index == 0 || isProUnlocked
     }
     
     func loadProduct() async {
+        guard !isLoadingProduct else { return }
+        
+        isLoadingProduct = true
+        defer {
+            isLoadingProduct = false
+        }
+        
         do {
-            let products = try await Product.products(for: ["com.saadanis.Apneue.Supporter"])
+            let products = try await Product.products(for: [K.supporterProductID])
             product = products.first
         } catch {
             product = nil
         }
     }
     
-    func buy() async -> Bool {
-        guard let product else { return false }
-        
+    func buy(_ product: Product) async -> PurchaseOutcome {
         isPurchasing = true
         defer {
             isPurchasing = false
@@ -178,23 +180,26 @@ final class StoreManager: ObservableObject {
             let result = try await product.purchase()
             switch result {
             case .success(let verification):
-                let transaction = try checkVerified(verification)
+                let transaction = try await verified(verification)
                 await transaction.finish()
                 await refreshEntitlements()
-                return true
+                return .success
                 
-            case .userCancelled, .pending:
-                return false
+            case .userCancelled:
+                return .cancelled
+                
+            case .pending:
+                return .pending
                 
             @unknown default:
-                return false
+                return .cancelled
             }
         } catch {
-            return false
+            return .failed(error)
         }
     }
     
-    func restorePurchases() async {
+    func restorePurchases() async -> RestoreOutcome {
         isRestoring = true
         defer {
             isRestoring = false
@@ -202,54 +207,73 @@ final class StoreManager: ObservableObject {
         
         do {
             try await AppStore.sync()
-        } catch { }
+        } catch StoreKitError.userCancelled {
+            return .cancelled
+        } catch {
+            return .failed(error)
+        }
         
         await refreshEntitlements()
+        return isProUnlocked ? .restored : .noPurchasesFound
     }
     
     func refreshEntitlements() async {
         var unlocked = false
         
         for await result in Transaction.currentEntitlements {
-            do {
-                let transaction = try checkVerified(result)
-                if transaction.productID == "com.saadanis.Apneue.Supporter" {
-                    unlocked = true
-                    break
-                }
-            } catch {
-                // ignore unverified
+            if case .verified(let transaction) = result, transaction.productID == K.supporterProductID {
+                unlocked = true
+                break
             }
         }
         
         isProUnlocked = unlocked
+        UserDefaults.standard.set(unlocked, forKey: "isProUnlocked")
     }
     
-    private func listenForTransactionUpdates() -> Task<Void, Never> {
-        Task.detached { [weak self] in
+    private func listenForTransactionUpdates() {
+        Task { [weak self] in
             for await update in Transaction.updates {
-                guard let self else { continue }
-                do {
-                    let transaction = try await self.checkVerified(update)
-                    await transaction.finish()
-                    await self.refreshEntitlements()
-                } catch {
-                    // ignore unverified
-                }
+                guard let self else { return }
+                guard let transaction = try? await verified(update) else { continue }
+                await transaction.finish()
+                await refreshEntitlements()
+                await resetIconIfRevoked()
             }
         }
     }
+
+    func resetIconIfRevoked() async {
+        guard case .verified(let transaction) = await Transaction.latest(for: K.supporterProductID),
+              transaction.revocationDate != nil,
+              UIApplication.shared.supportsAlternateIcons,
+              UIApplication.shared.alternateIconName != nil else { return }
+        try? await UIApplication.shared.setAlternateIconName(nil)
+    }
     
-    private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
+    private func verified(_ result: VerificationResult<StoreKit.Transaction>) async throws -> StoreKit.Transaction {
         switch result {
-        case .verified(let safe): return safe
-        case .unverified: throw StoreKitError.notEntitled
+        case .verified(let transaction):
+            return transaction
+        case .unverified(let transaction, let error):
+            await transaction.finish()
+            throw error
         }
     }
 }
 
-enum StoreKitError: Error {
-    case notEntitled
+enum PurchaseOutcome {
+    case success
+    case cancelled
+    case pending
+    case failed(Error)
+}
+
+enum RestoreOutcome {
+    case restored
+    case cancelled
+    case noPurchasesFound
+    case failed(Error)
 }
 
 struct ColorTheme {

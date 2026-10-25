@@ -9,8 +9,14 @@ import SwiftUI
 import StoreKit
 
 struct SupporterView: View {
+    private struct StoreAlert {
+        let title: String
+        let message: String
+    }
+    
     @State private var showingSignIn = false
-    @AppStorage("colorThemeIndex") private var themeIndex: Int = 0
+    @State private var storeAlert: StoreAlert?
+    @Environment(\.themeIndex) private var themeIndex
     
     @EnvironmentObject var store: StoreManager
     @Environment(\.colorScheme) var colorScheme
@@ -44,6 +50,34 @@ struct SupporterView: View {
                 .multilineTextAlignment(.leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private func purchaseAlert(for outcome: PurchaseOutcome) -> StoreAlert? {
+        switch outcome {
+        case .success, .cancelled:
+            nil
+        case .pending:
+            StoreAlert(
+                title: "Purchase Pending",
+                message: "Your purchase is pending. Apneue will unlock when the purchase is complete."
+            )
+        case .failed(let error):
+            StoreAlert(title: "Purchase Unsuccessful", message: error.localizedDescription)
+        }
+    }
+    
+    private func restoreAlert(for outcome: RestoreOutcome) -> StoreAlert? {
+        switch outcome {
+        case .restored, .cancelled:
+            nil
+        case .noPurchasesFound:
+            StoreAlert(
+                title: "No Purchase Found",
+                message: "There's no Apneue supporter purchase on this Apple Account. If you bought it with a different account, sign in with that one and try again."
+            )
+        case .failed(let error):
+            StoreAlert(title: "Restore Unsuccessful", message: error.localizedDescription)
+        }
     }
     
     var body: some View {
@@ -139,7 +173,7 @@ struct SupporterView: View {
                     .disabled(true)
                 } else if let product = store.product {
                     Button {
-                        Task { _ = await store.buy() }
+                        Task { storeAlert = purchaseAlert(for: await store.buy(product)) }
                     } label: {
                         HStack {
                             if store.isPurchasing {
@@ -160,16 +194,26 @@ struct SupporterView: View {
                     .disabled(store.isPurchasing)
 
                 } else {
-                    ProgressView()
+                    Button {
+                        Task { await store.loadProduct() }
+                    } label: {
+                        HStack {
+                            if store.isLoadingProduct {
+                                ProgressView()
+                            } else {
+                                Text("Try Again").font(.callout)
+                            }
+                        }
                         .padding(7)
                         .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.glassProminent)
+                    .disabled(store.isLoadingProduct)
                 }
                 HStack {
                     Text("Already a supporter?")
                     Button {
-                        Task {
-                            await store.restorePurchases()
-                        }
+                        Task { storeAlert = restoreAlert(for: await store.restorePurchases()) }
                     } label: {
                         if store.isRestoring {
                             HStack(spacing: 4) {
@@ -211,6 +255,17 @@ struct SupporterView: View {
 //        .navigationBarTitleDisplayMode(.inline)
         .task {
             await store.refreshEntitlements()
+            if store.product == nil {
+                await store.loadProduct()
+            }
+        }
+        .alert(
+            storeAlert?.title ?? "",
+            isPresented: Binding(get: { storeAlert != nil }, set: { if !$0 { storeAlert = nil } }),
+            presenting: storeAlert
+        ) { _ in
+        } message: { alert in
+            Text(alert.message)
         }
     }
 }

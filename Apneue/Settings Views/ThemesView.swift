@@ -56,7 +56,8 @@ struct ThemesView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     
-    @AppStorage("colorThemeIndex") private var themeIndex: Int = 0
+    @Environment(\.themeIndex) private var themeIndex
+    @AppStorage("colorThemeIndex") private var storedThemeIndex: Int = 0
     @EnvironmentObject var store: StoreManager
     
     let themes = K.colorThemes
@@ -77,7 +78,7 @@ struct ThemesView: View {
                 LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(lower..<upper, id: \.self) { i in
                         Button {
-                            themeIndex = i
+                            storedThemeIndex = i
                         } label: {
                             ZStack(alignment: .bottom) {
                                 if themeIndex == i {
@@ -124,9 +125,9 @@ struct ThemesView: View {
                             .frame(height: 180)
                         }
                         .buttonStyle(.plain)
-                        .disabled(!isThemeAvailable(i))
-                        .opacity(isThemeAvailable(i) ? 1 : 0.9)
-                        .saturation(isThemeAvailable(i) ? 1 : 0.5)
+                        .disabled(!store.isThemeAvailable(i))
+                        .opacity(store.isThemeAvailable(i) ? 1 : 0.9)
+                        .saturation(store.isThemeAvailable(i) ? 1 : 0.5)
 
                     }
                 }
@@ -134,10 +135,6 @@ struct ThemesView: View {
         } else {
             EmptyView()
         }
-    }
-    
-    func isThemeAvailable(_ index: Int) -> Bool {
-        index == 0 || store.isProUnlocked
     }
     
     var body: some View {

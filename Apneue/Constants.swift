@@ -18,6 +18,8 @@ struct K {
     static let upperSpacing: CGFloat = 10
     static let lowerSpacing: CGFloat = 30
     
+    static let supporterProductID = "com.saadanis.Apneue.Supporter"
+    
     static let appIconNames: [String] = [
         "ApneueIcon",
         "MintIcon",
@@ -28,8 +30,7 @@ struct K {
         "RetroIcon",
         "PeacefulIcon",
         "BloomIcon",
-        "NailIcon",
-        "MacintoshIcon"
+        "NailIcon"
     ]
     
     static let colorThemes: [ColorTheme] = [

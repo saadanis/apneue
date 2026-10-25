@@ -78,3 +78,7 @@ extension Color {
         return Color(red: Double(r), green: Double(g), blue: Double(b))
     }
 }
+
+extension EnvironmentValues {
+    @Entry var themeIndex: Int = 0
+}
