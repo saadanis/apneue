@@ -31,6 +31,10 @@ struct RemindersSettingsView: View {
     
     @State var authorizationStatus: UNAuthorizationStatus = .notDetermined
     
+    var isAuthorized: Bool {
+        [.authorized, .provisional, .ephemeral].contains(authorizationStatus)
+    }
+    
     @State var isConfirmationDialogPresented: Bool = false
     
     let notificationMessages: [String] = [
@@ -100,26 +104,31 @@ struct RemindersSettingsView: View {
                     }
                     .clipShape(.capsule)
                 }
-                Toggle("Enable Reminders", isOn: $enableReminders)
-                    .onChange(of: enableReminders) { _, newValue in
-                        if newValue {
-                            Task { await requestAuthorization() }
-                        } else {
-                            isConfirmationDialogPresented = true
-                        }
+                Toggle("Enable Reminders", isOn: Binding {
+                    enableReminders
+                } set: { newValue in
+                    if newValue {
+                        Task { await requestAuthorization() }
+                    } else {
+                        isConfirmationDialogPresented = true
                     }
+                })
                     .alert("Disable Reminders?", isPresented: $isConfirmationDialogPresented) {
                         Button("Disable", role: .destructive) {
+                            enableReminders = false
                             deleteAllReminders()
                         }
-                        Button("Cancel", role: .cancel) {
-                            enableReminders = true
-                        }
+                        Button("Cancel", role: .cancel) {}
                     } message: {
                         Text("Disabling reminders will delete all existing reminders. Continue?")
                     }
-                
-
+                if authorizationStatus == .denied {
+                    Link("Open Settings", destination: URL(string: UIApplication.openNotificationSettingsURLString)!)
+                }
+            } footer: {
+                if authorizationStatus == .denied {
+                    Text("Notifications for Apneue are off in Settings, so reminders do not appear.")
+                }
             }
             Section("Scheduled Reminders") {
                 if scheduledNotifications.isEmpty {
@@ -201,7 +210,7 @@ struct RemindersSettingsView: View {
                 Button("Create New Reminder", systemImage: "plus", role: .confirm) {
                     isShowingCreateReminder = true
                 }
-                .disabled(!enableReminders || (editMode?.wrappedValue.isEditing == true))
+                .disabled(!enableReminders || !isAuthorized || (editMode?.wrappedValue.isEditing == true))
             }
             if editMode?.wrappedValue.isEditing == true {
                 ToolbarItem(placement: .topBarLeading) {
@@ -231,7 +240,7 @@ struct RemindersSettingsView: View {
     
     func requestAuthorization() async {
         do {
-            _ = try await notificationCenter.requestAuthorization(options: [.alert, .badge, .sound])
+            enableReminders = try await notificationCenter.requestAuthorization(options: [.alert, .badge, .sound])
         } catch {
             print(error.localizedDescription)
         }
