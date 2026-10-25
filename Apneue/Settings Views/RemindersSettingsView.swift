@@ -19,8 +19,14 @@ struct RemindersSettingsView: View {
     
     @State var scheduledNotifications: [UNNotificationRequest] = []
     
-    var sortedNotifications: [UNNotificationRequest] {
-        scheduledNotifications.sorted { $0.identifier < $1.identifier }
+    // Each identifier starts with the reminder time as HHmm.
+    var reminderTimes: [String] {
+        Set(scheduledNotifications.map { String($0.identifier.prefix(4)) }).sorted()
+    }
+    
+    // The system keeps only 64 pending requests, and a reminder uses 7.
+    var hasRoomForReminder: Bool {
+        scheduledNotifications.count + 7 <= 64
     }
     
     @State var isShowingCreateReminder: Bool = false
@@ -36,7 +42,7 @@ struct RemindersSettingsView: View {
     }
     
     var isDuplicateReminder: Bool {
-        scheduledNotifications.contains { $0.identifier == identifier(for: createNewReminderDate) }
+        reminderTimes.contains(reminderTime(for: createNewReminderDate))
     }
     
     @State var isConfirmationDialogPresented: Bool = false
@@ -134,7 +140,7 @@ struct RemindersSettingsView: View {
                     Text("Notifications for Apneue are off in Settings, so reminders do not appear.")
                 }
             }
-            Section("Scheduled Reminders") {
+            Section {
                 if scheduledNotifications.isEmpty {
                     HStack {
                         Spacer()
@@ -144,11 +150,11 @@ struct RemindersSettingsView: View {
                         Spacer()
                     }
                 }
-                ForEach(sortedNotifications, id: \.identifier) { notification in
+                ForEach(reminderTimes, id: \.self) { time in
                     HStack {
                         
-                        let hour = Int(notification.identifier.prefix(2)) ?? 0
-                        let minute = Int(notification.identifier.suffix(2)) ?? 0
+                        let hour = Int(time.prefix(2)) ?? 0
+                        let minute = Int(time.suffix(2)) ?? 0
                         let timeOfDay = getTimeOfDay(hour: hour)
                         
                         Label(timeOfDay.1, systemImage: timeOfDay.0)
@@ -159,6 +165,12 @@ struct RemindersSettingsView: View {
                     }
                 }
                 .onDelete(perform: deleteReminder)
+            } header: {
+                Text("Scheduled Reminders")
+            } footer: {
+                if !hasRoomForReminder {
+                    Text("You have the maximum number of reminders.")
+                }
             }
         }
         .navigationTitle("Reminders")
@@ -210,7 +222,7 @@ struct RemindersSettingsView: View {
                 Button("Create New Reminder", systemImage: "plus", role: .confirm) {
                     isShowingCreateReminder = true
                 }
-                .disabled(!enableReminders || !isAuthorized || (editMode?.wrappedValue.isEditing == true))
+                .disabled(!enableReminders || !isAuthorized || !hasRoomForReminder || (editMode?.wrappedValue.isEditing == true))
             }
             if editMode?.wrappedValue.isEditing == true {
                 ToolbarItem(placement: .topBarLeading) {
@@ -258,7 +270,8 @@ struct RemindersSettingsView: View {
     }
     
     func deleteReminder(at offsets: IndexSet) {
-        let identifiers = offsets.map { sortedNotifications[$0].identifier }
+        let times = offsets.map { reminderTimes[$0] }
+        let identifiers = scheduledNotifications.map(\.identifier).filter { times.contains(String($0.prefix(4))) }
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
         scheduledNotifications.removeAll { identifiers.contains($0.identifier) }
     }
@@ -285,7 +298,7 @@ struct RemindersSettingsView: View {
         }
     }
     
-    func identifier(for date: Date) -> String {
+    func reminderTime(for date: Date) -> String {
         let calendar = Calendar.current
         return String(format: "%02d%02d", calendar.component(.hour, from: date), calendar.component(.minute, from: date))
     }
@@ -293,30 +306,36 @@ struct RemindersSettingsView: View {
     func createReminder(date: Date) async {
         
         let calendar = Calendar.current
+        let messages = notificationMessages.shuffled()
         
-        // Configuring the content.
-        let content = UNMutableNotificationContent()
-        content.title = "Time to Train"
-        content.body = notificationMessages.randomElement() ?? "No message set."
-        content.sound = UNNotificationSound.default
-        
-        // Configuring a recurring date-based trigger.
-        let dateComponents = calendar.dateComponents([.hour, .minute], from: date)
-        
-        let trigger = UNCalendarNotificationTrigger(
-            dateMatching: dateComponents,
-            repeats: true
-        )
-        
-        // Registering a notification request.
-        let request = UNNotificationRequest(identifier: identifier(for: date), content: content, trigger: trigger)
-        
-        do {
-            try await notificationCenter.add(request)
-            scheduledNotifications = await notificationCenter.pendingNotificationRequests()
-        } catch {
-            print(error)
+        // A repeating request cannot change its message, so use one request for each weekday.
+        for weekday in 1...7 {
+            
+            // Configuring the content.
+            let content = UNMutableNotificationContent()
+            content.title = "Time to Train"
+            content.body = messages[weekday - 1]
+            content.sound = UNNotificationSound.default
+            
+            // Configuring a recurring date-based trigger.
+            var dateComponents = calendar.dateComponents([.hour, .minute], from: date)
+            dateComponents.weekday = weekday
+            
+            let trigger = UNCalendarNotificationTrigger(
+                dateMatching: dateComponents,
+                repeats: true
+            )
+            
+            // Registering a notification request.
+            let request = UNNotificationRequest(identifier: "\(reminderTime(for: date))-\(weekday)", content: content, trigger: trigger)
+            
+            do {
+                try await notificationCenter.add(request)
+            } catch {
+                print(error)
+            }
         }
+        scheduledNotifications = await notificationCenter.pendingNotificationRequests()
     }
 }
 
