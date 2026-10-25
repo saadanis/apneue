@@ -143,6 +143,7 @@ struct StatisticsView: View {
         }
     }
     
+    #if DEBUG
     private func populateDemoData() {
         let calendar = Calendar.current
         let now = Date()
@@ -280,6 +281,7 @@ struct StatisticsView: View {
 
         // NOTE: Current streak will be 14 days (including today). Longest streak will remain 17 days.
     }
+    #endif
     
     private func calculateStreak() -> (Int, Int) {
         
