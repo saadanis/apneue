@@ -18,30 +18,6 @@ struct StatisticsView: View {
     @Environment(\.themeIndex) private var themeIndex
     
     @Query(sort: \Entry.timestamp, order: .reverse) var entries: [Entry]
-    
-    @Query(
-        filter: #Predicate<Entry> { $0.mode == "Max Hold" },
-        sort: \Entry.timestamp,
-        order: .reverse
-    ) var maxHoldEntries: [Entry]
-    
-    @Query(
-        filter: #Predicate<Entry> { $0.mode == "Box Breathing" },
-        sort: \Entry.timestamp,
-        order: .reverse
-    ) var boxBreathingEntries: [Entry]
-    
-    @Query(
-        filter: #Predicate<Entry> { $0.mode == "CO₂ Table" },
-        sort: \Entry.timestamp,
-        order: .reverse
-    ) var co2Entries: [Entry]
-    
-    @Query(
-        filter: #Predicate<Entry> { $0.mode == "O₂ Table" },
-        sort: \Entry.timestamp,
-        order: .reverse
-    ) var o2Entries: [Entry]
 
     var totalTime: TimeInterval {
         entries.map { entry in
@@ -51,6 +27,7 @@ struct StatisticsView: View {
     
     var body: some View {
         let streak = calculateStreak()
+        let entriesByMode = Dictionary(grouping: entries, by: \.mode)
         
         NavigationStack {
             ThemedList(themeIndex: themeIndex) {
@@ -92,34 +69,25 @@ struct StatisticsView: View {
                     .listRowBackground(Color.clear)
                 }
                 Section("All Data") {
-                    
-                    let modeToEntries: [TimerMode: [Entry]] = [
-                        .maxHold : maxHoldEntries,
-                        .boxBreathing : boxBreathingEntries,
-                        .co2Table : co2Entries,
-                        .o2Table : o2Entries
-                    ]
-
                     ForEach(TimerMode.allCases, id: \.self) { mode in
-                        if let modeEntries = modeToEntries[mode] {
-                            if modeEntries.isEmpty {
+                        let modeEntries = entriesByMode[mode.rawValue] ?? []
+                        if modeEntries.isEmpty {
+                            LatestEntryWithChartView(
+                                entries: modeEntries,
+                                mode: mode,
+                                themeIndex: themeIndex
+                            )
+                        } else {
+                            NavigationLink {
+                                StatisticsDetailsView(mode: mode, themeIndex: themeIndex)
+                            } label: {
                                 LatestEntryWithChartView(
                                     entries: modeEntries,
                                     mode: mode,
                                     themeIndex: themeIndex
                                 )
-                            } else {
-                                NavigationLink {
-                                    StatisticsDetailsView(mode: mode, themeIndex: themeIndex)
-                                } label: {
-                                    LatestEntryWithChartView(
-                                        entries: modeEntries,
-                                        mode: mode,
-                                        themeIndex: themeIndex
-                                    )
-                                }
-                                .navigationLinkIndicatorVisibility(.hidden)
                             }
+                            .navigationLinkIndicatorVisibility(.hidden)
                         }
                     }
                 }
