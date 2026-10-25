@@ -22,8 +22,6 @@ struct SettingsView: View {
     @AppStorage("hapticsEnabled") var hapticsEnabled: Bool = true
     @AppStorage("skipInitialRest") var skipInitialRest: Bool = true
     
-    @Query(sort: \Entry.timestamp, order: .reverse) var entries: [Entry]
-    
     @Environment(\.themeIndex) private var themeIndex
     
     let themes = K.colorThemes
