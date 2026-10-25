@@ -103,15 +103,10 @@ struct RemindersSettingsView: View {
                 Toggle("Enable Reminders", isOn: $enableReminders)
                     .onChange(of: enableReminders) { _, newValue in
                         if newValue {
-                            notificationCenter.requestAuthorization(options: [.alert, .badge, .sound]) { success, error in
-                                if let error {
-                                    print(error.localizedDescription)
-                                }
-                            }
+                            Task { await requestAuthorization() }
                         } else {
                             isConfirmationDialogPresented = true
                         }
-                        updateAuthorizationStatus()
                     }
                     .alert("Disable Reminders?", isPresented: $isConfirmationDialogPresented) {
                         Button("Disable", role: .destructive) {
@@ -226,22 +221,25 @@ struct RemindersSettingsView: View {
             }
         }
         .navigationBarBackButtonHidden(editMode?.wrappedValue.isEditing == true)
-        .onAppear {
-            loadNotifications()
-            updateAuthorizationStatus()
-        }
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active {
-                loadNotifications()
-                updateAuthorizationStatus()
+        .task(id: scenePhase) {
+            if scenePhase == .active {
+                await loadNotifications()
+                await updateAuthorizationStatus()
             }
         }
     }
     
-    func updateAuthorizationStatus() {
-        notificationCenter.getNotificationSettings { settings in
-            authorizationStatus = settings.authorizationStatus
+    func requestAuthorization() async {
+        do {
+            _ = try await notificationCenter.requestAuthorization(options: [.alert, .badge, .sound])
+        } catch {
+            print(error.localizedDescription)
         }
+        await updateAuthorizationStatus()
+    }
+    
+    func updateAuthorizationStatus() async {
+        authorizationStatus = await notificationCenter.notificationSettings().authorizationStatus
     }
     
     func formatIdentifierToDate(identifier: String) -> Date {
@@ -264,10 +262,8 @@ struct RemindersSettingsView: View {
         scheduledNotifications.removeAll()
     }
     
-    func loadNotifications() {
-        notificationCenter.getPendingNotificationRequests { requests in
-            scheduledNotifications = requests
-        }
+    func loadNotifications() async {
+        scheduledNotifications = await notificationCenter.pendingNotificationRequests()
     }
     
     func getTimeOfDay(date: Date) -> (String,String) {
