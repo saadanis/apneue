@@ -240,7 +240,7 @@ struct RemindersSettingsView: View {
     
     func requestAuthorization() async {
         do {
-            enableReminders = try await notificationCenter.requestAuthorization(options: [.alert, .badge, .sound])
+            enableReminders = try await notificationCenter.requestAuthorization(options: [.alert, .sound])
         } catch {
             print(error.localizedDescription)
         }
@@ -317,6 +317,14 @@ struct RemindersSettingsView: View {
         } catch {
             print(error)
         }
+    }
+}
+
+final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Sendable {
+    static let shared = NotificationDelegate()
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        [.banner, .list, .sound]
     }
 }
 
