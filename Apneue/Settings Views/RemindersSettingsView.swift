@@ -19,6 +19,10 @@ struct RemindersSettingsView: View {
     
     @State var scheduledNotifications: [UNNotificationRequest] = []
     
+    var sortedNotifications: [UNNotificationRequest] {
+        scheduledNotifications.sorted { $0.identifier < $1.identifier }
+    }
+    
     @State var isShowingCreateReminder: Bool = false
     
     @State var createNewReminderDate: Date = Date.now
@@ -132,7 +136,7 @@ struct RemindersSettingsView: View {
                         Spacer()
                     }
                 }
-                ForEach(scheduledNotifications.sorted(by: { $0.identifier < $1.identifier }), id: \.identifier) { notification in
+                ForEach(sortedNotifications, id: \.identifier) { notification in
                     HStack {
                         
                         let notificationDate = formatIdentifierToDate(
@@ -250,11 +254,9 @@ struct RemindersSettingsView: View {
     }
     
     func deleteReminder(at offsets: IndexSet) {
-        for index in offsets {
-            let identifier = scheduledNotifications[index].identifier
-                UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
-            }
-        scheduledNotifications.remove(atOffsets: offsets)
+        let identifiers = offsets.map { sortedNotifications[$0].identifier }
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+        scheduledNotifications.removeAll { identifiers.contains($0.identifier) }
     }
     
     func deleteAllReminders() {
