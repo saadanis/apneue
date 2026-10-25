@@ -147,20 +147,15 @@ struct RemindersSettingsView: View {
                 ForEach(sortedNotifications, id: \.identifier) { notification in
                     HStack {
                         
-                        let notificationDate = formatIdentifierToDate(
-                            identifier: notification.identifier)
-                        let timeOfDay = getTimeOfDay(date: notificationDate)
+                        let hour = Int(notification.identifier.prefix(2)) ?? 0
+                        let minute = Int(notification.identifier.suffix(2)) ?? 0
+                        let timeOfDay = getTimeOfDay(hour: hour)
                         
                         Label(timeOfDay.1, systemImage: timeOfDay.0)
                             .fontWeight(.semibold)
                         Spacer()
-                        Text(
-                            notificationDate.formatted(
-                                date: .omitted,
-                                time: .shortened
-                            )
-                        )
-                        .foregroundStyle(.secondary)
+                        Text(formattedTime(hour: hour, minute: minute))
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .onDelete(perform: deleteReminder)
@@ -256,13 +251,10 @@ struct RemindersSettingsView: View {
         authorizationStatus = await notificationCenter.notificationSettings().authorizationStatus
     }
     
-    func formatIdentifierToDate(identifier: String) -> Date {
-        
-        let hour = Int(identifier.prefix(2)) ?? 0
-        let minute = Int(identifier.suffix(2)) ?? 0
-        let calendar = Calendar.current
-        
-        return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: Date()) ?? Date()
+    // Use UTC, because a local time can be missing on the day of a DST change.
+    func formattedTime(hour: Int, minute: Int) -> String {
+        Date(timeIntervalSinceReferenceDate: TimeInterval(hour * 3600 + minute * 60))
+            .formatted(Date.FormatStyle(date: .omitted, time: .shortened, timeZone: .gmt))
     }
     
     func deleteReminder(at offsets: IndexSet) {
@@ -280,9 +272,7 @@ struct RemindersSettingsView: View {
         scheduledNotifications = await notificationCenter.pendingNotificationRequests()
     }
     
-    func getTimeOfDay(date: Date) -> (String,String) {
-        let hour = Calendar.current.component(.hour, from: date)
-        
+    func getTimeOfDay(hour: Int) -> (String,String) {
         switch hour {
         case 5..<12:
             return ("sunrise", "Morning")
