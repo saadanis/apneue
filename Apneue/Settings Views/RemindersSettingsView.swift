@@ -35,6 +35,10 @@ struct RemindersSettingsView: View {
         [.authorized, .provisional, .ephemeral].contains(authorizationStatus)
     }
     
+    var isDuplicateReminder: Bool {
+        scheduledNotifications.contains { $0.identifier == identifier(for: createNewReminderDate) }
+    }
+    
     @State var isConfirmationDialogPresented: Bool = false
     
     let notificationMessages: [String] = [
@@ -172,7 +176,7 @@ struct RemindersSettingsView: View {
                         .listRowInsets(.all, 0)
                         .listRowBackground(Color.clear)
                     VStack {
-                        Text("You will be reminded at this time every day.")
+                        Text(isDuplicateReminder ? "You already have a reminder at this time." : "You will be reminded at this time every day.")
                             .multilineTextAlignment(.center)
                             .foregroundStyle(.secondary)
                             .font(.subheadline)
@@ -188,10 +192,11 @@ struct RemindersSettingsView: View {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Save", systemImage: "checkmark", role: .confirm) {
                             Task {
-                                _ = await createReminder(date: createNewReminderDate)
+                                await createReminder(date: createNewReminderDate)
                                 isShowingCreateReminder = false
                             }
                         }
+                        .disabled(isDuplicateReminder)
                     }
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel", systemImage: "xmark", role: .cancel) {
@@ -290,20 +295,14 @@ struct RemindersSettingsView: View {
         }
     }
     
-    func createReminder(date: Date) async -> Bool {
+    func identifier(for date: Date) -> String {
+        let calendar = Calendar.current
+        return String(format: "%02d%02d", calendar.component(.hour, from: date), calendar.component(.minute, from: date))
+    }
+    
+    func createReminder(date: Date) async {
         
         let calendar = Calendar.current
-        let hour = String(format: "%02d", calendar.component(.hour, from: date))
-        let minute = String(format: "%02d", calendar.component(.minute, from: date))
-        let identifier = "\(hour)\(minute)"
-        
-        let requests = await notificationCenter.pendingNotificationRequests()
-        
-        for request in requests {
-            if request.identifier == identifier {
-                return false
-            }
-        }
         
         // Configuring the content.
         let content = UNMutableNotificationContent()
@@ -320,16 +319,14 @@ struct RemindersSettingsView: View {
         )
         
         // Registering a notification request.
-        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+        let request = UNNotificationRequest(identifier: identifier(for: date), content: content, trigger: trigger)
         
         do {
             try await notificationCenter.add(request)
             scheduledNotifications = await notificationCenter.pendingNotificationRequests()
-            return true
         } catch {
             print(error)
         }
-        return false
     }
 }
 
