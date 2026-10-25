@@ -313,18 +313,33 @@ struct LatestEntryWithChartView: View {
         }
     }
     
-    var lastSevenDays: [Date: Entry?] {
-        guard let latestEntry = entries.max(by: { $0.timestamp < $1.timestamp }) else { return [:] }
+    struct DayTotal {
+        let date: Date
+        let duration: TimeInterval
+        let isLatest: Bool
+    }
+    
+    var lastSevenDays: [DayTotal] {
         let calendar = Calendar.current
-        let lastDate = calendar.startOfDay(for: latestEntry.timestamp)
-        let lastSevenDates = (0..<7).map { calendar.date(byAdding: .day, value: -$0, to: lastDate)! }.reversed()
-
-        var dict: [Date: Entry?] = [:]
-        for date in lastSevenDates {
-            let entryForDate = entries.first { calendar.isDate($0.timestamp, inSameDayAs: date) }
-            dict[date] = entryForDate
+        let startOfToday = calendar.startOfDay(for: .now)
+        let today = Entry.day(of: .now)
+        
+        // A session saved in a time zone ahead of the current one can be on a later day. Count it as today.
+        func daysAgo(_ entry: Entry) -> Int {
+            max(today - entry.day, 0)
         }
-        return dict
+        
+        var durations = Array(repeating: TimeInterval(0), count: 7)
+        for entry in entries where daysAgo(entry) < durations.count {
+            durations[daysAgo(entry)] += entry.duration
+        }
+        let latestDaysAgo = latestEntry.map(daysAgo)
+        
+        return durations.indices.reversed().compactMap { index in
+            calendar.date(byAdding: .day, value: -index, to: startOfToday).map {
+                DayTotal(date: $0, duration: durations[index], isLatest: index == latestDaysAgo)
+            }
+        }
     }
     
     var latestEntry: Entry? {
@@ -341,8 +356,6 @@ struct LatestEntryWithChartView: View {
         let secondaryColor: Color = colorScheme == .light ?
             .gray.darker(by: -20) :
             .gray.darker(by: 20)
-        
-        let calendar = Calendar.current
         
             VStack {
                 HStack(alignment: .firstTextBaseline) {
@@ -382,8 +395,8 @@ struct LatestEntryWithChartView: View {
                     }
                     Spacer()
                     if mode == .maxHold {
-                        Chart(Array(lastSevenEntries.enumerated()), id: \.element.timestamp) { index, entry in
-                            let latest = entry.timestamp == latestEntry!.timestamp
+                        Chart(Array(lastSevenEntries.enumerated()), id: \.element.id) { index, entry in
+                            let latest = entry.id == latestEntry?.id
 
                             LineMark(
                                 x: .value("Date", index),
@@ -420,27 +433,17 @@ struct LatestEntryWithChartView: View {
                         .padding(.top)
                         .padding(.trailing, 5)
                     } else {
-                        Chart(Array(lastSevenDays.keys.enumerated()), id: \.element) { index, date in
-                            if let entry = lastSevenDays[date] ?? nil {
-                                BarMark(
-                                    x: .value("Date", date),
-                                    y: .value("Duration", entry.duration),
-                                    width: 10
-                                )
-                                .foregroundStyle(
-                                    calendar.isDate(
-                                        date,
-                                        inSameDayAs: latestEntry!.timestamp
-                                    ) ?
-                                    K.colorThemes[themeIndex].accentColor :
-                                            secondaryColor
-                                )
-                            } else {
-                                BarMark(
-                                    x: .value("Date", date),
-                                    y: .value("Duration", 0.0)
-                                )
-                            }
+                        Chart(lastSevenDays, id: \.date) { day in
+                            BarMark(
+                                x: .value("Date", day.date),
+                                y: .value("Duration", day.duration),
+                                width: 10
+                            )
+                            .foregroundStyle(
+                                day.isLatest ?
+                                K.colorThemes[themeIndex].accentColor :
+                                    secondaryColor
+                            )
                         }
                         .chartYAxis(.hidden)
                         .chartXAxis(.hidden)
