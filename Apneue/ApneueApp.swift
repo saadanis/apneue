@@ -243,7 +243,6 @@ final class StoreManager: ObservableObject {
         }
     }
 
-    /// Read the latest transaction, not `isProUnlocked`: an empty entitlement check can mean StoreKit could not check.
     func resetIconIfRevoked() async {
         guard case .verified(let transaction) = await Transaction.latest(for: K.supporterProductID),
               transaction.revocationDate != nil,

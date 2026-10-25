@@ -80,6 +80,5 @@ extension Color {
 }
 
 extension EnvironmentValues {
-    /// The theme after the supporter gate. Read this, not the `colorThemeIndex` key.
     @Entry var themeIndex: Int = 0
 }

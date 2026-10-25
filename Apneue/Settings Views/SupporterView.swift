@@ -59,7 +59,7 @@ struct SupporterView: View {
         case .pending:
             StoreAlert(
                 title: "Purchase Pending",
-                message: "Your purchase is waiting for approval. Apneue will unlock automatically once it's approved."
+                message: "Your purchase is pending. Apneue will unlock when the purchase is complete."
             )
         case .failed(let error):
             StoreAlert(title: "Purchase Unsuccessful", message: error.localizedDescription)
