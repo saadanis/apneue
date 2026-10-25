@@ -260,8 +260,7 @@ struct RemindersSettingsView: View {
     }
     
     func deleteAllReminders() {
-        let identifiers = scheduledNotifications.map(\.identifier)
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
         scheduledNotifications.removeAll()
     }
     
