@@ -253,26 +253,20 @@ struct StatisticsView: View {
     #endif
     
     private func calculateStreak() -> (Int, Int) {
-        let days = Set(entries.map(\.day))
-        guard let latestDay = days.max() else { return (0, 0) }
-        
+        let today = Entry.day(of: .now)
+        var streak = 0
         var longestStreak = 0
-        for day in days where !days.contains(day - 1) {
-            var length = 1
-            while days.contains(day + length) {
-                length += 1
-            }
-            longestStreak = max(longestStreak, length)
-        }
+        var previousDay: Int?
         
-        // A streak stays current until a full day passes without a session.
-        var currentStreak = 0
-        if latestDay >= Entry.day(of: .now) - 1 {
-            while days.contains(latestDay - currentStreak) {
-                currentStreak += 1
-            }
+        // A day after today comes from a time zone ahead of the current one. Count it as today.
+        for day in Set(entries.map { min($0.day, today) }).sorted() {
+            streak = previousDay == day - 1 ? streak + 1 : 1
+            longestStreak = max(longestStreak, streak)
+            previousDay = day
         }
 
+        // A streak stays current until a full day passes without a session.
+        let currentStreak = (previousDay ?? .min) >= today - 1 ? streak : 0
         return (currentStreak, longestStreak)
     }
 }
