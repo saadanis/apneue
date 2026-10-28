@@ -89,13 +89,15 @@ struct StatisticsView: View {
                         }
                     }
                 }
-//                Section {
-//                    Button {
-//                        populateDemoData()
-//                    } label: {
-//                        Label("Generate Demo Data", systemImage: "wand.and.stars")
-//                    }
-//                }
+                #if DEBUG
+                Section {
+                    Button {
+                        populateDemoData()
+                    } label: {
+                        Label("Generate Demo Data", systemImage: "wand.and.stars")
+                    }
+                }
+                #endif
             }
             .listRowSpacing(10)
             .navigationDestination(for: TimerMode.self) { mode in
