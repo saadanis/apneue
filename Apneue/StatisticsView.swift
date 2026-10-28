@@ -308,33 +308,23 @@ struct LatestEntryWithChartView: View {
         }
     }
     
-    struct DayTotal {
-        let date: Date
-        let duration: TimeInterval
-        let isLatest: Bool
-    }
-    
-    var lastSevenDays: [DayTotal] {
-        let calendar = Calendar.current
-        let startOfToday = calendar.startOfDay(for: .now)
+    // Indexed by days ago, so today is first.
+    var lastSevenDays: (durations: [TimeInterval], latest: Int?) {
         let today = Entry.day(of: .now)
         
-        // A session saved in a time zone ahead of the current one can be on a later day. Count it as today.
+        // A day after today comes from a time zone ahead of the current one. Count it as today.
         func daysAgo(_ entry: Entry) -> Int {
-            max(today - entry.day, 0)
+            today - min(entry.day, today)
         }
         
         var durations = Array(repeating: TimeInterval(0), count: 7)
-        for entry in entries where daysAgo(entry) < durations.count {
-            durations[daysAgo(entry)] += entry.duration
-        }
-        let latestDaysAgo = latestEntry.map(daysAgo)
-        
-        return durations.indices.reversed().compactMap { index in
-            calendar.date(byAdding: .day, value: -index, to: startOfToday).map {
-                DayTotal(date: $0, duration: durations[index], isLatest: index == latestDaysAgo)
+        for entry in entries {
+            let index = daysAgo(entry)
+            if index < durations.count {
+                durations[index] += entry.duration
             }
         }
+        return (durations, latestEntry.map(daysAgo))
     }
     
     var latestEntry: Entry? {
@@ -428,14 +418,15 @@ struct LatestEntryWithChartView: View {
                         .padding(.top)
                         .padding(.trailing, 5)
                     } else {
-                        Chart(lastSevenDays, id: \.date) { day in
+                        let days = lastSevenDays
+                        Chart(Array(days.durations.enumerated()), id: \.offset) { daysAgo, duration in
                             BarMark(
-                                x: .value("Date", day.date),
-                                y: .value("Duration", day.duration),
+                                x: .value("Day", -daysAgo),
+                                y: .value("Duration", duration),
                                 width: 10
                             )
                             .foregroundStyle(
-                                day.isLatest ?
+                                daysAgo == days.latest ?
                                 K.colorThemes[themeIndex].accentColor :
                                     secondaryColor
                             )
