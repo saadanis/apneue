@@ -10,7 +10,7 @@ import SwiftData
 
 @Model
 final class Entry {
-    #Index<Entry>([\.mode], [\.timestamp])
+    #Index<Entry>([\.mode, \.timestamp], [\.timestamp])
     
     var timestamp: Date = Date.now
     var duration: TimeInterval = 0
