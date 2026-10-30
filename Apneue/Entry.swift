@@ -10,14 +10,35 @@ import SwiftData
 
 @Model
 final class Entry {
+    #Index<Entry>([\.mode, \.timestamp], [\.timestamp])
+    
     var timestamp: Date = Date.now
     var duration: TimeInterval = 0
     var mode: String = TimerMode.maxHold.rawValue
+    var secondsFromGMT: Int?
     
     init(duration: TimeInterval, mode: TimerMode, timestamp: Date = Date()) {
         self.timestamp = timestamp
         self.duration = duration
         self.mode = mode.rawValue
+        self.secondsFromGMT = TimeZone.current.secondsFromGMT(for: startDate)
+    }
+    
+    var startDate: Date {
+        timestamp.addingTimeInterval(-duration)
+    }
+    
+    var day: Int {
+        Entry.day(of: startDate, secondsFromGMT: secondsFromGMT)
+    }
+    
+    func day(notAfter today: Int) -> Int {
+        min(day, today)
+    }
+    
+    static func day(of date: Date, secondsFromGMT: Int? = nil) -> Int {
+        let offset = secondsFromGMT ?? TimeZone.current.secondsFromGMT(for: date)
+        return Int(floor((date.timeIntervalSinceReferenceDate + Double(offset)) / 86_400))
     }
 }
 

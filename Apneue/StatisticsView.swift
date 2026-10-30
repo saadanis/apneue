@@ -18,33 +18,11 @@ struct StatisticsView: View {
     @Environment(\.themeIndex) private var themeIndex
     
     @Query(sort: \Entry.timestamp, order: .reverse) var entries: [Entry]
-    
-    @Query(
-        filter: #Predicate<Entry> { $0.mode == "Max Hold" },
-        sort: \Entry.timestamp,
-        order: .reverse
-    ) var maxHoldEntries: [Entry]
-    
-    @Query(
-        filter: #Predicate<Entry> { $0.mode == "Box Breathing" },
-        sort: \Entry.timestamp,
-        order: .reverse
-    ) var boxBreathingEntries: [Entry]
-    
-    @Query(
-        filter: #Predicate<Entry> { $0.mode == "CO₂ Table" },
-        sort: \Entry.timestamp,
-        order: .reverse
-    ) var co2Entries: [Entry]
-    
-    @Query(
-        filter: #Predicate<Entry> { $0.mode == "O₂ Table" },
-        sort: \Entry.timestamp,
-        order: .reverse
-    ) var o2Entries: [Entry]
 
-    var streak: (Int, Int) { calculateStreak() }
-
+    #if DEBUG
+    @State private var isShowingDemoDataDialog = false
+    #endif
+    
     var totalTime: TimeInterval {
         entries.map { entry in
             entry.duration
@@ -52,6 +30,9 @@ struct StatisticsView: View {
     }
     
     var body: some View {
+        let streak = calculateStreak()
+        let entriesByMode = Dictionary(grouping: entries, by: \.mode)
+        
         NavigationStack {
             ThemedList(themeIndex: themeIndex) {
                 Section("Summary") {
@@ -92,46 +73,49 @@ struct StatisticsView: View {
                     .listRowBackground(Color.clear)
                 }
                 Section("All Data") {
-                    
-                    let modeToEntries: [TimerMode: [Entry]] = [
-                        .maxHold : maxHoldEntries,
-                        .boxBreathing : boxBreathingEntries,
-                        .co2Table : co2Entries,
-                        .o2Table : o2Entries
-                    ]
-
                     ForEach(TimerMode.allCases, id: \.self) { mode in
-                        if let modeEntries = modeToEntries[mode] {
-                            if modeEntries.isEmpty {
+                        let modeEntries = entriesByMode[mode.rawValue] ?? []
+                        if modeEntries.isEmpty {
+                            LatestEntryWithChartView(
+                                entries: modeEntries,
+                                mode: mode,
+                                themeIndex: themeIndex
+                            )
+                        } else {
+                            NavigationLink(value: mode) {
                                 LatestEntryWithChartView(
                                     entries: modeEntries,
                                     mode: mode,
                                     themeIndex: themeIndex
                                 )
-                            } else {
-                                NavigationLink {
-                                    StatisticsDetailsView(mode: mode, themeIndex: themeIndex)
-                                } label: {
-                                    LatestEntryWithChartView(
-                                        entries: modeEntries,
-                                        mode: mode,
-                                        themeIndex: themeIndex
-                                    )
-                                }
-                                .navigationLinkIndicatorVisibility(.hidden)
                             }
+                            .navigationLinkIndicatorVisibility(.hidden)
                         }
                     }
                 }
-//                Section {
-//                    Button {
-//                        populateDemoData()
-//                    } label: {
-//                        Label("Generate Demo Data", systemImage: "wand.and.stars")
-//                    }
-//                }
+                #if DEBUG
+                Section {
+                    Button {
+                        isShowingDemoDataDialog = true
+                    } label: {
+                        Label("Generate Demo Data", systemImage: "wand.and.stars")
+                    }
+                    .confirmationDialog(
+                        Text("Are you sure you want to replace all entries with demo data?"),
+                        isPresented: $isShowingDemoDataDialog,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Replace All", role: .destructive) {
+                            populateDemoData()
+                        }
+                    }
+                }
+                #endif
             }
             .listRowSpacing(10)
+            .navigationDestination(for: TimerMode.self) { mode in
+                StatisticsDetailsView(mode: mode, themeIndex: themeIndex)
+            }
             .navigationTitle("Statistics")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -143,6 +127,7 @@ struct StatisticsView: View {
         }
     }
     
+    #if DEBUG
     private func populateDemoData() {
         let calendar = Calendar.current
         let now = Date()
@@ -280,54 +265,22 @@ struct StatisticsView: View {
 
         // NOTE: Current streak will be 14 days (including today). Longest streak will remain 17 days.
     }
+    #endif
     
     private func calculateStreak() -> (Int, Int) {
+        let today = Entry.day(of: .now)
+        var streak = 0
+        var longestStreak = 0
+        var previousDay: Int?
         
-        let calendar = Calendar.current
-        
-        let uniqueDays = Set(entries.map {
-            calendar.startOfDay(for: $0.timestamp)
-        })
-        
-        let sortedDays = uniqueDays.sorted(by: >)
-        let longestStreak = calculateLongestStreak(dates: sortedDays.reversed())
-
-        let yesterday = calendar.startOfDay(for: Date.now.addingTimeInterval(-86400))
-
-        let today = calendar.startOfDay(for: Date())
-        
-        var streak = sortedDays.contains(today) ? 1 : 0
-        
-        for i in 0..<sortedDays.count {
-            let expectedDay = calendar.date(byAdding: .day, value: -i, to: yesterday)!
-            if sortedDays.contains(expectedDay) {
-                streak += 1
-            } else {
-                break
-            }
-        }
-        
-        return (streak, max(streak, longestStreak))
-    }
-    
-    private func calculateLongestStreak(dates: [Date]) -> Int {
-        guard !dates.isEmpty else { return 0 }
-        
-        let calendar = Calendar.current
-        var maxStreak = 1
-        var currentStreak = 1
-        
-        for i in 1..<dates.count {
-            let diff = calendar.dateComponents([.day], from: dates[i - 1], to: dates[i]).day ?? 0
-            if diff == 1 {
-                currentStreak += 1
-                maxStreak = max(maxStreak, currentStreak)
-            } else if diff > 1 {
-                currentStreak = 1
-            }
+        for day in Set(entries.map { $0.day(notAfter: today) }).sorted() {
+            streak = previousDay == day - 1 ? streak + 1 : 1
+            longestStreak = max(longestStreak, streak)
+            previousDay = day
         }
 
-        return maxStreak
+        let currentStreak = (previousDay ?? .min) >= today - 1 ? streak : 0
+        return (currentStreak, longestStreak)
     }
 }
 
@@ -368,18 +321,21 @@ struct LatestEntryWithChartView: View {
         }
     }
     
-    var lastSevenDays: [Date: Entry?] {
-        guard let latestEntry = entries.max(by: { $0.timestamp < $1.timestamp }) else { return [:] }
-        let calendar = Calendar.current
-        let lastDate = calendar.startOfDay(for: latestEntry.timestamp)
-        let lastSevenDates = (0..<7).map { calendar.date(byAdding: .day, value: -$0, to: lastDate)! }.reversed()
-
-        var dict: [Date: Entry?] = [:]
-        for date in lastSevenDates {
-            let entryForDate = entries.first { calendar.isDate($0.timestamp, inSameDayAs: date) }
-            dict[date] = entryForDate
+    var lastSevenDays: (durations: [TimeInterval], latest: Int?) {
+        let today = Entry.day(of: .now)
+        
+        func daysAgo(_ entry: Entry) -> Int {
+            today - entry.day(notAfter: today)
         }
-        return dict
+        
+        var durations = Array(repeating: TimeInterval(0), count: 7)
+        for entry in entries {
+            let index = daysAgo(entry)
+            if index < durations.count {
+                durations[index] += entry.duration
+            }
+        }
+        return (durations, latestEntry.map(daysAgo))
     }
     
     var latestEntry: Entry? {
@@ -397,8 +353,6 @@ struct LatestEntryWithChartView: View {
             .gray.darker(by: -20) :
             .gray.darker(by: 20)
         
-        let calendar = Calendar.current
-        
             VStack {
                 HStack(alignment: .firstTextBaseline) {
                     Group {
@@ -410,7 +364,7 @@ struct LatestEntryWithChartView: View {
                     Spacer()
                     if let latestEntry = latestEntry {
                         Group {
-                            Text(latestEntry.timestamp.formatted(date: .numeric, time: .omitted))
+                            Text(latestEntry.startDate.formatted(date: .numeric, time: .omitted))
                             Image(systemName: "chevron.right")
                                 .fontWeight(.semibold)
                         }
@@ -437,8 +391,8 @@ struct LatestEntryWithChartView: View {
                     }
                     Spacer()
                     if mode == .maxHold {
-                        Chart(Array(lastSevenEntries.enumerated()), id: \.element.timestamp) { index, entry in
-                            let latest = entry.timestamp == latestEntry!.timestamp
+                        Chart(Array(lastSevenEntries.enumerated()), id: \.element.id) { index, entry in
+                            let latest = entry.id == latestEntry?.id
 
                             LineMark(
                                 x: .value("Date", index),
@@ -475,27 +429,18 @@ struct LatestEntryWithChartView: View {
                         .padding(.top)
                         .padding(.trailing, 5)
                     } else {
-                        Chart(Array(lastSevenDays.keys.enumerated()), id: \.element) { index, date in
-                            if let entry = lastSevenDays[date] ?? nil {
-                                BarMark(
-                                    x: .value("Date", date),
-                                    y: .value("Duration", entry.duration),
-                                    width: 10
-                                )
-                                .foregroundStyle(
-                                    calendar.isDate(
-                                        date,
-                                        inSameDayAs: latestEntry!.timestamp
-                                    ) ?
-                                    K.colorThemes[themeIndex].accentColor :
-                                            secondaryColor
-                                )
-                            } else {
-                                BarMark(
-                                    x: .value("Date", date),
-                                    y: .value("Duration", 0.0)
-                                )
-                            }
+                        let days = lastSevenDays
+                        Chart(Array(days.durations.enumerated()), id: \.offset) { daysAgo, duration in
+                            BarMark(
+                                x: .value("Day", -daysAgo),
+                                y: .value("Duration", duration),
+                                width: 10
+                            )
+                            .foregroundStyle(
+                                daysAgo == days.latest ?
+                                K.colorThemes[themeIndex].accentColor :
+                                    secondaryColor
+                            )
                         }
                         .chartYAxis(.hidden)
                         .chartXAxis(.hidden)
