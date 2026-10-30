@@ -266,7 +266,6 @@ struct StatisticsView: View {
             previousDay = day
         }
 
-        // A streak stays current until a full day passes without a session.
         let currentStreak = (previousDay ?? .min) >= today - 1 ? streak : 0
         return (currentStreak, longestStreak)
     }
@@ -309,7 +308,6 @@ struct LatestEntryWithChartView: View {
         }
     }
     
-    // Indexed by days ago, so today is first.
     var lastSevenDays: (durations: [TimeInterval], latest: Int?) {
         let today = Entry.day(of: .now)
         

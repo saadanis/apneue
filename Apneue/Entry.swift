@@ -29,7 +29,6 @@ final class Entry {
         timestamp.addingTimeInterval(-duration)
     }
     
-    // Entries saved before secondsFromGMT existed use the current time zone.
     var day: Int {
         Entry.day(of: startDate, secondsFromGMT: secondsFromGMT)
     }
