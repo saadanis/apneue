@@ -33,6 +33,11 @@ final class Entry {
         Entry.day(of: startDate, secondsFromGMT: secondsFromGMT)
     }
     
+    // A session saved in a time zone ahead of this one can fall after today.
+    func day(notAfter today: Int) -> Int {
+        min(day, today)
+    }
+    
     static func day(of date: Date, secondsFromGMT: Int? = nil) -> Int {
         let offset = secondsFromGMT ?? TimeZone.current.secondsFromGMT(for: date)
         return Int(floor((date.timeIntervalSinceReferenceDate + Double(offset)) / 86_400))

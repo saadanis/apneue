@@ -260,8 +260,7 @@ struct StatisticsView: View {
         var longestStreak = 0
         var previousDay: Int?
         
-        // A day after today comes from a time zone ahead of the current one. Count it as today.
-        for day in Set(entries.map { min($0.day, today) }).sorted() {
+        for day in Set(entries.map { $0.day(notAfter: today) }).sorted() {
             streak = previousDay == day - 1 ? streak + 1 : 1
             longestStreak = max(longestStreak, streak)
             previousDay = day
@@ -314,9 +313,8 @@ struct LatestEntryWithChartView: View {
     var lastSevenDays: (durations: [TimeInterval], latest: Int?) {
         let today = Entry.day(of: .now)
         
-        // A day after today comes from a time zone ahead of the current one. Count it as today.
         func daysAgo(_ entry: Entry) -> Int {
-            today - min(entry.day, today)
+            today - entry.day(notAfter: today)
         }
         
         var durations = Array(repeating: TimeInterval(0), count: 7)
