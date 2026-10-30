@@ -26,8 +26,10 @@ struct RemindersSettingsView: View {
     }
     
     // The system keeps only 64 pending requests, and a reminder uses 7.
+    let maxReminders = 64 / 7
+    
     var hasRoomForReminder: Bool {
-        (reminderTimes.count + 1) * 7 <= 64
+        reminderTimes.count < maxReminders
     }
     
     @State var isShowingCreateReminder: Bool = false
@@ -83,6 +85,8 @@ struct RemindersSettingsView: View {
                 Toggle("Enable Reminders", isOn: Binding {
                     remindersOn
                 } set: { newValue in
+                    // Set the choice now, so the switch does not spring back while the request runs.
+                    enableReminders = newValue
                     Task { await setReminders(on: newValue) }
                 })
                 .disabled(authorizationStatus == .denied)
@@ -178,6 +182,7 @@ struct RemindersSettingsView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Create New Reminder", systemImage: "plus", role: .confirm) {
+                        createNewReminderDate = Date.now
                         isShowingCreateReminder = true
                     }
                     .disabled(!hasRoomForReminder || (editMode?.wrappedValue.isEditing == true))
@@ -237,7 +242,7 @@ struct RemindersSettingsView: View {
     // Older versions kept the times only in the pending requests, as the HHmm prefix of each identifier.
     func importPendingReminders() async {
         let requests = await notificationCenter.pendingNotificationRequests()
-        reminderTimes = Array(Set(requests.map { String($0.identifier.prefix(4)) }))
+        reminderTimes = Array(Set(requests.map { String($0.identifier.prefix(4)) }).sorted().prefix(maxReminders))
         scheduleReminders()
     }
     
