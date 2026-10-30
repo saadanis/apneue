@@ -24,7 +24,6 @@ final class Entry {
         self.secondsFromGMT = TimeZone.current.secondsFromGMT(for: startDate)
     }
     
-    // timestamp is the session end, not the start.
     var startDate: Date {
         timestamp.addingTimeInterval(-duration)
     }
@@ -33,7 +32,6 @@ final class Entry {
         Entry.day(of: startDate, secondsFromGMT: secondsFromGMT)
     }
     
-    // A session saved in a time zone ahead of this one can fall after today.
     func day(notAfter today: Int) -> Int {
         min(day, today)
     }
