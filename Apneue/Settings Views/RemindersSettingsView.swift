@@ -105,8 +105,7 @@ struct RemindersSettingsView: View {
                     ForEach(reminderTimes, id: \.self) { time in
                         HStack {
                             
-                            let hour = Int(time.prefix(2)) ?? 0
-                            let minute = Int(time.suffix(2)) ?? 0
+                            let (hour, minute) = hourAndMinute(time)
                             let timeOfDay = getTimeOfDay(hour: hour)
                             
                             Label(timeOfDay.1, systemImage: timeOfDay.0)
@@ -119,14 +118,13 @@ struct RemindersSettingsView: View {
                             Button("Delete", systemImage: "trash", role: .destructive) {
                                 withAnimation {
                                     reminderTimes.removeAll { $0 == time }
-                                    scheduleReminders()
                                 }
                             }
                             .labelStyle(.iconOnly)
                             .tint(.red)
                         }
                     }
-                    .onDelete(perform: deleteReminder)
+                    .onDelete { reminderTimes.remove(atOffsets: $0) }
                 } header: {
                     Text("Scheduled Reminders")
                 } footer: {
@@ -161,7 +159,7 @@ struct RemindersSettingsView: View {
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Save", systemImage: "checkmark", role: .confirm) {
-                            addReminder(date: createNewReminderDate)
+                            reminderTimes.append(reminderTime(for: createNewReminderDate))
                             isShowingCreateReminder = false
                         }
                         .disabled(isDuplicateReminder)
@@ -199,7 +197,7 @@ struct RemindersSettingsView: View {
                         titleVisibility: .visible
                     ) {
                         Button("Delete All", role: .destructive) {
-                            deleteAllReminders()
+                            reminderTimes = []
                         }
                     }
                 }
@@ -210,6 +208,9 @@ struct RemindersSettingsView: View {
             if !isOn {
                 editMode?.wrappedValue = .inactive
             }
+        }
+        .onChange(of: storedReminderTimes) {
+            scheduleReminders()
         }
         .task(id: scenePhase) {
             if scenePhase == .active {
@@ -229,8 +230,6 @@ struct RemindersSettingsView: View {
                 print(error.localizedDescription)
             }
             await updateAuthorizationStatus()
-        } else {
-            enableReminders = false
         }
         scheduleReminders()
     }
@@ -243,28 +242,12 @@ struct RemindersSettingsView: View {
     func importPendingReminders() async {
         let requests = await notificationCenter.pendingNotificationRequests()
         reminderTimes = Array(Set(requests.map { String($0.identifier.prefix(4)) }).sorted().prefix(maxReminders))
-        scheduleReminders()
     }
     
     // Use UTC, because a local time can be missing on the day of a DST change.
     func formattedTime(hour: Int, minute: Int) -> String {
         Date(timeIntervalSinceReferenceDate: TimeInterval(hour * 3600 + minute * 60))
             .formatted(Date.FormatStyle(date: .omitted, time: .shortened, timeZone: .gmt))
-    }
-    
-    func addReminder(date: Date) {
-        reminderTimes.append(reminderTime(for: date))
-        scheduleReminders()
-    }
-    
-    func deleteReminder(at offsets: IndexSet) {
-        reminderTimes.remove(atOffsets: offsets)
-        scheduleReminders()
-    }
-    
-    func deleteAllReminders() {
-        reminderTimes = []
-        scheduleReminders()
     }
     
     func getTimeOfDay(hour: Int) -> (String,String) {
@@ -285,25 +268,29 @@ struct RemindersSettingsView: View {
         return String(format: "%02d%02d", calendar.component(.hour, from: date), calendar.component(.minute, from: date))
     }
     
+    func hourAndMinute(_ time: String) -> (hour: Int, minute: Int) {
+        (Int(time.prefix(2)) ?? 0, Int(time.suffix(2)) ?? 0)
+    }
+    
     // Rebuild all pending requests from the saved times, so the two never differ.
     func scheduleReminders() {
         notificationCenter.removeAllPendingNotificationRequests()
         guard enableReminders else { return }
         
         for time in reminderTimes {
-            let messages = notificationMessages.shuffled()
+            let (hour, minute) = hourAndMinute(time)
             
             // A repeating request cannot change its message, so use one request for each weekday.
-            for weekday in 1...7 {
+            for (weekday, message) in zip(1...7, notificationMessages.shuffled()) {
                 
                 // Configuring the content.
                 let content = UNMutableNotificationContent()
                 content.title = "Time to Train"
-                content.body = messages[weekday - 1]
+                content.body = message
                 content.sound = UNNotificationSound.default
                 
                 // Configuring a recurring date-based trigger.
-                let dateComponents = DateComponents(hour: Int(time.prefix(2)), minute: Int(time.suffix(2)), weekday: weekday)
+                let dateComponents = DateComponents(hour: hour, minute: minute, weekday: weekday)
                 
                 let trigger = UNCalendarNotificationTrigger(
                     dateMatching: dateComponents,
