@@ -15,7 +15,6 @@ struct RemindersSettingsView: View {
     
     @AppStorage("enableReminders") var enableReminders: Bool = false
     
-    // Nil until the first import from an older version.
     @AppStorage("reminderTimes") var storedReminderTimes: String?
     
     let notificationCenter = UNUserNotificationCenter.current()
@@ -25,7 +24,6 @@ struct RemindersSettingsView: View {
         nonmutating set { storedReminderTimes = newValue.sorted().joined(separator: ",") }
     }
     
-    // The system keeps only 64 pending requests, and a reminder uses 7.
     let maxReminders = 64 / 7
     
     var hasRoomForReminder: Bool {
@@ -38,7 +36,6 @@ struct RemindersSettingsView: View {
     
     @State private var isShowingDeleteAllDialog = false
     
-    // Nil until the first check ends, so the switch shows the saved choice and does not flash off.
     @State var authorizationStatus: UNAuthorizationStatus?
     
     var remindersOn: Bool {
@@ -85,7 +82,6 @@ struct RemindersSettingsView: View {
                 Toggle("Enable Reminders", isOn: Binding {
                     remindersOn
                 } set: { newValue in
-                    // Set the choice now, so the switch does not spring back while the request runs.
                     enableReminders = newValue
                     Task { await setReminders(on: newValue) }
                 })
@@ -238,13 +234,11 @@ struct RemindersSettingsView: View {
         authorizationStatus = await notificationCenter.notificationSettings().authorizationStatus
     }
     
-    // Older versions kept the times only in the pending requests, as the HHmm prefix of each identifier.
     func importPendingReminders() async {
         let requests = await notificationCenter.pendingNotificationRequests()
         reminderTimes = Array(Set(requests.map { String($0.identifier.prefix(4)) }).sorted().prefix(maxReminders))
     }
     
-    // Use UTC, because a local time can be missing on the day of a DST change.
     func formattedTime(hour: Int, minute: Int) -> String {
         Date(timeIntervalSinceReferenceDate: TimeInterval(hour * 3600 + minute * 60))
             .formatted(Date.FormatStyle(date: .omitted, time: .shortened, timeZone: .gmt))
@@ -279,7 +273,6 @@ struct RemindersSettingsView: View {
         for time in reminderTimes {
             let (hour, minute) = hourAndMinute(time)
             
-            // A repeating request cannot change its message, so use one request for each weekday.
             for (weekday, message) in zip(1...7, notificationMessages.shuffled()) {
                 
                 let content = UNMutableNotificationContent()
