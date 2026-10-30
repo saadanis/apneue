@@ -52,6 +52,15 @@ struct StatisticsDetailsView: View {
                         Spacer()
                         Text(entry.startDate.formatted(date: .abbreviated, time: .shortened))
                     }
+                    .swipeActions {
+                        Button("Delete", systemImage: "trash", role: .destructive) {
+                            withAnimation {
+                                modelContext.delete(entry)
+                            }
+                        }
+                        .labelStyle(.iconOnly)
+                        .tint(.red)
+                    }
                 }
                 .onDelete(perform: deleteEntry)
             }
