@@ -24,6 +24,7 @@ final class Entry {
         self.secondsFromGMT = TimeZone.current.secondsFromGMT(for: startDate)
     }
     
+    // timestamp is the session end, not the start.
     var startDate: Date {
         timestamp.addingTimeInterval(-duration)
     }
