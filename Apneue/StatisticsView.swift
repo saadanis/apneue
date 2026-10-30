@@ -19,6 +19,10 @@ struct StatisticsView: View {
     
     @Query(sort: \Entry.timestamp, order: .reverse) var entries: [Entry]
 
+    #if DEBUG
+    @State private var isShowingDemoDataDialog = false
+    #endif
+    
     var totalTime: TimeInterval {
         entries.map { entry in
             entry.duration
@@ -92,9 +96,18 @@ struct StatisticsView: View {
                 #if DEBUG
                 Section {
                     Button {
-                        populateDemoData()
+                        isShowingDemoDataDialog = true
                     } label: {
                         Label("Generate Demo Data", systemImage: "wand.and.stars")
+                    }
+                    .confirmationDialog(
+                        Text("Are you sure you want to replace all entries with demo data?"),
+                        isPresented: $isShowingDemoDataDialog,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Replace All", role: .destructive) {
+                            populateDemoData()
+                        }
                     }
                 }
                 #endif
