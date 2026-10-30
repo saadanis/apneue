@@ -111,6 +111,16 @@ struct RemindersSettingsView: View {
                             Text(formattedTime(hour: hour, minute: minute))
                                 .foregroundStyle(.secondary)
                         }
+                        .swipeActions {
+                            Button("Delete", systemImage: "trash", role: .destructive) {
+                                withAnimation {
+                                    reminderTimes.removeAll { $0 == time }
+                                    scheduleReminders()
+                                }
+                            }
+                            .labelStyle(.iconOnly)
+                            .tint(.red)
+                        }
                     }
                     .onDelete(perform: deleteReminder)
                 } header: {
