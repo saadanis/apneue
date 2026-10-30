@@ -15,7 +15,7 @@ struct RemindersSettingsView: View {
     
     @AppStorage("enableReminders") var enableReminders: Bool = false
     
-    // HHmm times joined by commas. Nil until the first import from an older version.
+    // Nil until the first import from an older version.
     @AppStorage("reminderTimes") var storedReminderTimes: String?
     
     let notificationCenter = UNUserNotificationCenter.current()
@@ -38,7 +38,7 @@ struct RemindersSettingsView: View {
     
     @State private var isShowingDeleteAllDialog = false
     
-    // Nil until the first check ends. Until then, trust the saved choice, so the switch does not flash off.
+    // Nil until the first check ends, so the switch shows the saved choice and does not flash off.
     @State var authorizationStatus: UNAuthorizationStatus?
     
     var remindersOn: Bool {
@@ -272,7 +272,6 @@ struct RemindersSettingsView: View {
         (Int(time.prefix(2)) ?? 0, Int(time.suffix(2)) ?? 0)
     }
     
-    // Rebuild all pending requests from the saved times, so the two never differ.
     func scheduleReminders() {
         notificationCenter.removeAllPendingNotificationRequests()
         guard enableReminders else { return }
@@ -283,13 +282,11 @@ struct RemindersSettingsView: View {
             // A repeating request cannot change its message, so use one request for each weekday.
             for (weekday, message) in zip(1...7, notificationMessages.shuffled()) {
                 
-                // Configuring the content.
                 let content = UNMutableNotificationContent()
                 content.title = "Time to Train"
                 content.body = message
                 content.sound = UNNotificationSound.default
                 
-                // Configuring a recurring date-based trigger.
                 let dateComponents = DateComponents(hour: hour, minute: minute, weekday: weekday)
                 
                 let trigger = UNCalendarNotificationTrigger(
@@ -297,7 +294,6 @@ struct RemindersSettingsView: View {
                     repeats: true
                 )
                 
-                // Registering a notification request.
                 let request = UNNotificationRequest(identifier: "\(time)-\(weekday)", content: content, trigger: trigger)
                 
                 notificationCenter.add(request)
