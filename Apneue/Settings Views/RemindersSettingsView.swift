@@ -64,6 +64,21 @@ struct RemindersSettingsView: View {
     
     var body: some View {
         ThemedList(themeIndex: themeIndex) {
+            if authorizationStatus == .denied {
+                Section {
+                    Label {
+                        VStack(alignment: .leading) {
+                            Text("Notifications Are Disabled")
+                            Text("Apneue cannot send reminders until you allow notifications in Settings.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "bell.slash")
+                    }
+                    Link("Open Settings", destination: URL(string: UIApplication.openNotificationSettingsURLString)!)
+                }
+            }
             Section {
                 Toggle("Enable Reminders", isOn: Binding {
                     remindersOn
@@ -71,15 +86,6 @@ struct RemindersSettingsView: View {
                     Task { await setReminders(on: newValue) }
                 })
                 .disabled(authorizationStatus == .denied)
-                if authorizationStatus == .denied {
-                    Label("Notifications Are Off", systemImage: "bell.slash")
-                        .foregroundStyle(.secondary)
-                    Link("Open Settings", destination: URL(string: UIApplication.openNotificationSettingsURLString)!)
-                }
-            } footer: {
-                if authorizationStatus == .denied {
-                    Text("Apneue cannot send reminders until you allow notifications in Settings.")
-                }
             }
             if remindersOn {
                 Section {
