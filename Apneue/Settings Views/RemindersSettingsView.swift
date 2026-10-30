@@ -15,9 +15,20 @@ struct RemindersSettingsView: View {
     
     @AppStorage("enableReminders") var enableReminders: Bool = false
     
+    @AppStorage("reminderTimes") var storedReminderTimes: String?
+    
     let notificationCenter = UNUserNotificationCenter.current()
     
-    @State var scheduledNotifications: [UNNotificationRequest] = []
+    var reminderTimes: [String] {
+        get { storedReminderTimes?.split(separator: ",").map(String.init) ?? [] }
+        nonmutating set { storedReminderTimes = newValue.sorted().joined(separator: ",") }
+    }
+    
+    let maxReminders = 64 / 7
+    
+    var hasRoomForReminder: Bool {
+        reminderTimes.count < maxReminders
+    }
     
     @State var isShowingCreateReminder: Bool = false
     
@@ -25,9 +36,17 @@ struct RemindersSettingsView: View {
     
     @State private var isShowingDeleteAllDialog = false
     
-    @State var authorizationStatus: UNAuthorizationStatus = .notDetermined
+    @State var authorizationStatus: UNAuthorizationStatus?
     
-    @State var isConfirmationDialogPresented: Bool = false
+    var remindersOn: Bool {
+        guard enableReminders else { return false }
+        guard let authorizationStatus else { return true }
+        return [.authorized, .provisional, .ephemeral].contains(authorizationStatus)
+    }
+    
+    var isDuplicateReminder: Bool {
+        reminderTimes.contains(reminderTime(for: createNewReminderDate))
+    }
     
     let notificationMessages: [String] = [
         "Boost your lung capacity with today’s session.",
@@ -44,114 +63,71 @@ struct RemindersSettingsView: View {
     
     var body: some View {
         ThemedList(themeIndex: themeIndex) {
-            Section {
-                HStack {
-                    Text("Authorization Status")
-                    Spacer()
-                    HStack {
-                        switch authorizationStatus {
-                        case .notDetermined:
-                            Image(systemName: "questionmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        case .denied:
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.red)
-                        case .authorized, .provisional, .ephemeral:
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.green)
-                        @unknown default:
-                            Image(systemName: "questionmark.circle.fill")
+            if authorizationStatus == .denied {
+                Section {
+                    Label {
+                        VStack(alignment: .leading) {
+                            Text("Notifications Are Disabled")
+                            Text("Apneue cannot send reminders until you allow notifications in Settings.")
+                                .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                        Group {
-                            switch authorizationStatus {
-                            case .notDetermined:
-                                Text("Not Determined")
-                            case .denied:
-                                Text("Denied")
-                            case .authorized, .provisional, .ephemeral:
-                                Text("Authorized")
-                            @unknown default:
-                                Text("Unknown")
-                            }
-                        }
-                        .foregroundStyle(.secondary)
+                    } icon: {
+                        Image(systemName: "bell.slash")
                     }
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .padding(.vertical, 6)
-                    .padding(.leading, 8)
-                    .padding(.trailing, 10)
-                    .background {
-                        switch authorizationStatus {
-                        case .notDetermined:
-                            Color.secondary.opacity(0.4)
-                        case .denied:
-                            Color.red.opacity(0.4)
-                        case .authorized, .provisional, .ephemeral:
-                            Color.green.opacity(0.4)
-                        @unknown default:
-                            Color.gray.opacity(0.4)
-                        }
-                    }
-                    .clipShape(.capsule)
+                    Link("Open Settings", destination: URL(string: UIApplication.openNotificationSettingsURLString)!)
                 }
-                Toggle("Enable Reminders", isOn: $enableReminders)
-                    .onChange(of: enableReminders) { _, newValue in
-                        if newValue {
-                            notificationCenter.requestAuthorization(options: [.alert, .badge, .sound]) { success, error in
-                                if let error {
-                                    print(error.localizedDescription)
+            }
+            Section {
+                Toggle("Enable Reminders", isOn: Binding {
+                    remindersOn
+                } set: { newValue in
+                    enableReminders = newValue
+                    Task { await setReminders(on: newValue) }
+                })
+                .disabled(authorizationStatus == .denied)
+            }
+            if remindersOn {
+                Section {
+                    if reminderTimes.isEmpty {
+                        HStack {
+                            Spacer()
+                            Text("No reminders.")
+                                .foregroundStyle(.secondary)
+                                .font(.subheadline)
+                            Spacer()
+                        }
+                    }
+                    ForEach(reminderTimes, id: \.self) { time in
+                        HStack {
+                            
+                            let (hour, minute) = hourAndMinute(time)
+                            let timeOfDay = getTimeOfDay(hour: hour)
+                            
+                            Label(timeOfDay.1, systemImage: timeOfDay.0)
+                                .fontWeight(.semibold)
+                            Spacer()
+                            Text(formattedTime(hour: hour, minute: minute))
+                                .foregroundStyle(.secondary)
+                        }
+                        .swipeActions {
+                            Button("Delete", systemImage: "trash", role: .destructive) {
+                                withAnimation {
+                                    reminderTimes.removeAll { $0 == time }
                                 }
                             }
-                        } else {
-                            isConfirmationDialogPresented = true
+                            .labelStyle(.iconOnly)
+                            .tint(.red)
                         }
-                        updateAuthorizationStatus()
                     }
-                    .alert("Disable Reminders?", isPresented: $isConfirmationDialogPresented) {
-                        Button("Disable", role: .destructive) {
-                            deleteAllReminders()
-                        }
-                        Button("Cancel", role: .cancel) {
-                            enableReminders = true
-                        }
-                    } message: {
-                        Text("Disabling reminders will delete all existing reminders. Continue?")
-                    }
-                
-
-            }
-            Section("Scheduled Reminders") {
-                if scheduledNotifications.isEmpty {
-                    HStack {
-                        Spacer()
-                        Text("No reminders.")
-                            .foregroundStyle(.secondary)
-                            .font(.subheadline)
-                        Spacer()
+                    .onDelete { reminderTimes.remove(atOffsets: $0) }
+                } header: {
+                    Text("Scheduled Reminders")
+                } footer: {
+                    if !hasRoomForReminder {
+                        Text("You have the maximum number of reminders.")
                     }
                 }
-                ForEach(scheduledNotifications.sorted(by: { $0.identifier < $1.identifier }), id: \.identifier) { notification in
-                    HStack {
-                        
-                        let notificationDate = formatIdentifierToDate(
-                            identifier: notification.identifier)
-                        let timeOfDay = getTimeOfDay(date: notificationDate)
-                        
-                        Label(timeOfDay.1, systemImage: timeOfDay.0)
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Text(
-                            notificationDate.formatted(
-                                date: .omitted,
-                                time: .shortened
-                            )
-                        )
-                        .foregroundStyle(.secondary)
-                    }
-                }
-                .onDelete(perform: deleteReminder)
             }
         }
         .navigationTitle("Reminders")
@@ -164,7 +140,7 @@ struct RemindersSettingsView: View {
                         .listRowInsets(.all, 0)
                         .listRowBackground(Color.clear)
                     VStack {
-                        Text("You will be reminded at this time every day.")
+                        Text(isDuplicateReminder ? "You already have a reminder at this time." : "You will be reminded at this time every day.")
                             .multilineTextAlignment(.center)
                             .foregroundStyle(.secondary)
                             .font(.subheadline)
@@ -179,11 +155,10 @@ struct RemindersSettingsView: View {
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Save", systemImage: "checkmark", role: .confirm) {
-                            Task {
-                                _ = await createReminder(date: createNewReminderDate)
-                                isShowingCreateReminder = false
-                            }
+                            reminderTimes.append(reminderTime(for: createNewReminderDate))
+                            isShowingCreateReminder = false
                         }
+                        .disabled(isDuplicateReminder)
                     }
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel", systemImage: "xmark", role: .cancel) {
@@ -195,14 +170,17 @@ struct RemindersSettingsView: View {
             .presentationDetents([.fraction(0.5)])
         }
         .toolbar {
-            ToolbarItem {
-                EditButton()
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Create New Reminder", systemImage: "plus", role: .confirm) {
-                    isShowingCreateReminder = true
+            if remindersOn {
+                ToolbarItem {
+                    EditButton()
                 }
-                .disabled(!enableReminders || (editMode?.wrappedValue.isEditing == true))
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Create New Reminder", systemImage: "plus", role: .confirm) {
+                        createNewReminderDate = Date.now
+                        isShowingCreateReminder = true
+                    }
+                    .disabled(!hasRoomForReminder || (editMode?.wrappedValue.isEditing == true))
+                }
             }
             if editMode?.wrappedValue.isEditing == true {
                 ToolbarItem(placement: .topBarLeading) {
@@ -215,63 +193,58 @@ struct RemindersSettingsView: View {
                         titleVisibility: .visible
                     ) {
                         Button("Delete All", role: .destructive) {
-                            deleteAllReminders()
+                            reminderTimes = []
                         }
                     }
                 }
             }
         }
         .navigationBarBackButtonHidden(editMode?.wrappedValue.isEditing == true)
-        .onAppear {
-            loadNotifications()
-            updateAuthorizationStatus()
+        .onChange(of: remindersOn) { _, isOn in
+            if !isOn {
+                editMode?.wrappedValue = .inactive
+            }
         }
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active {
-                loadNotifications()
-                updateAuthorizationStatus()
+        .onChange(of: storedReminderTimes) {
+            scheduleReminders()
+        }
+        .task(id: scenePhase) {
+            if scenePhase == .active {
+                await updateAuthorizationStatus()
+                if storedReminderTimes == nil {
+                    await importPendingReminders()
+                }
             }
         }
     }
     
-    func updateAuthorizationStatus() {
-        notificationCenter.getNotificationSettings { settings in
-            authorizationStatus = settings.authorizationStatus
-        }
-    }
-    
-    func formatIdentifierToDate(identifier: String) -> Date {
-        
-        let hour = Int(identifier.prefix(2)) ?? 0
-        let minute = Int(identifier.suffix(2)) ?? 0
-        let calendar = Calendar.current
-        
-        return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: Date()) ?? Date()
-    }
-    
-    func deleteReminder(at offsets: IndexSet) {
-        for index in offsets {
-            let identifier = scheduledNotifications[index].identifier
-                UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
+    func setReminders(on: Bool) async {
+        if on {
+            do {
+                enableReminders = try await notificationCenter.requestAuthorization(options: [.alert, .sound])
+            } catch {
+                print(error.localizedDescription)
             }
-        scheduledNotifications.remove(atOffsets: offsets)
-    }
-    
-    func deleteAllReminders() {
-        let identifiers = scheduledNotifications.map(\.identifier)
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
-        scheduledNotifications.removeAll()
-    }
-    
-    func loadNotifications() {
-        notificationCenter.getPendingNotificationRequests { requests in
-            scheduledNotifications = requests
+            await updateAuthorizationStatus()
         }
+        scheduleReminders()
     }
     
-    func getTimeOfDay(date: Date) -> (String,String) {
-        let hour = Calendar.current.component(.hour, from: date)
-        
+    func updateAuthorizationStatus() async {
+        authorizationStatus = await notificationCenter.notificationSettings().authorizationStatus
+    }
+    
+    func importPendingReminders() async {
+        let requests = await notificationCenter.pendingNotificationRequests()
+        reminderTimes = Array(Set(requests.map { String($0.identifier.prefix(4)) }).sorted().prefix(maxReminders))
+    }
+    
+    func formattedTime(hour: Int, minute: Int) -> String {
+        Date(timeIntervalSinceReferenceDate: TimeInterval(hour * 3600 + minute * 60))
+            .formatted(Date.FormatStyle(date: .omitted, time: .shortened, timeZone: .gmt))
+    }
+    
+    func getTimeOfDay(hour: Int) -> (String,String) {
         switch hour {
         case 5..<12:
             return ("sunrise", "Morning")
@@ -284,46 +257,49 @@ struct RemindersSettingsView: View {
         }
     }
     
-    func createReminder(date: Date) async -> Bool {
-        
+    func reminderTime(for date: Date) -> String {
         let calendar = Calendar.current
-        let hour = String(format: "%02d", calendar.component(.hour, from: date))
-        let minute = String(format: "%02d", calendar.component(.minute, from: date))
-        let identifier = "\(hour)\(minute)"
+        return String(format: "%02d%02d", calendar.component(.hour, from: date), calendar.component(.minute, from: date))
+    }
+    
+    func hourAndMinute(_ time: String) -> (hour: Int, minute: Int) {
+        (Int(time.prefix(2)) ?? 0, Int(time.suffix(2)) ?? 0)
+    }
+    
+    func scheduleReminders() {
+        notificationCenter.removeAllPendingNotificationRequests()
+        guard enableReminders else { return }
         
-        let requests = await notificationCenter.pendingNotificationRequests()
-        
-        for request in requests {
-            if request.identifier == identifier {
-                return false
+        for time in reminderTimes {
+            let (hour, minute) = hourAndMinute(time)
+            
+            for (weekday, message) in zip(1...7, notificationMessages.shuffled()) {
+                
+                let content = UNMutableNotificationContent()
+                content.title = "Time to Train"
+                content.body = message
+                content.sound = UNNotificationSound.default
+                
+                let dateComponents = DateComponents(hour: hour, minute: minute, weekday: weekday)
+                
+                let trigger = UNCalendarNotificationTrigger(
+                    dateMatching: dateComponents,
+                    repeats: true
+                )
+                
+                let request = UNNotificationRequest(identifier: "\(time)-\(weekday)", content: content, trigger: trigger)
+                
+                notificationCenter.add(request)
             }
         }
-        
-        // Configuring the content.
-        let content = UNMutableNotificationContent()
-        content.title = "Time to Train"
-        content.body = notificationMessages.randomElement() ?? "No message set."
-        content.sound = UNNotificationSound.default
-        
-        // Configuring a recurring date-based trigger.
-        let dateComponents = calendar.dateComponents([.hour, .minute], from: date)
-        
-        let trigger = UNCalendarNotificationTrigger(
-            dateMatching: dateComponents,
-            repeats: true
-        )
-        
-        // Registering a notification request.
-        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
-        
-        do {
-            try await notificationCenter.add(request)
-            scheduledNotifications = await notificationCenter.pendingNotificationRequests()
-            return true
-        } catch {
-            print(error)
-        }
-        return false
+    }
+}
+
+final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Sendable {
+    static let shared = NotificationDelegate()
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        [.banner, .list, .sound]
     }
 }
 

@@ -10,6 +10,7 @@ import SwiftData
 import HealthKit
 import StoreKit
 import Foundation
+import UserNotifications
 
 @main
 struct ApneueApp: App {
@@ -56,6 +57,8 @@ struct ApneueApp: App {
         if lastHandledVersion != currentVersion {
             lastHandledVersion = currentVersion
         }
+        
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
     }
     
     var sharedModelContainer: ModelContainer = {
